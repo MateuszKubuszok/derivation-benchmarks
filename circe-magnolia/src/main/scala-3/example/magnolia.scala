@@ -1,15 +1,15 @@
 package example
 
-import cats.syntax.either._
+import cats.syntax.either.*
 import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json}
 import io.circe.Decoder.Result
-import magnolia1._
+import magnolia1.*
+
+import scala.deriving.Mirror
 
 // based on https://github.com/vpavkin/circe-magnolia/
 
 private[example] trait MagnoliaDecoder extends Derivation[Decoder] {
-
-  type TypeClass[A] = Decoder[A]
 
   def join[T](caseClass: CaseClass[Decoder, T]): Decoder[T] =
     (c: HCursor) =>
@@ -56,7 +56,10 @@ private[example] trait MagnoliaDecoder extends Derivation[Decoder] {
 
 object DecoderSemi extends MagnoliaDecoder
 
-object DecoderAuto extends MagnoliaDecoder with AutoDerivation[Decoder]
+object DecoderAuto extends MagnoliaDecoder {
+
+  implicit inline def deriveDecoder[A](implicit m: Mirror.Of[A]): Decoder[A] = derived
+}
 
 private[example] trait MagnoliaEncoder extends Derivation[Encoder] {
 
@@ -64,7 +67,7 @@ private[example] trait MagnoliaEncoder extends Derivation[Encoder] {
     (a: T) =>
       Json.obj(caseClass.params.map { p =>
         p.label -> p.typeclass(p.deref(a))
-      }: _*)
+      }*)
 
   def split[T](sealedTrait: SealedTrait[Encoder, T]): Encoder[T] = (a: T) =>
     sealedTrait.choose(a) { subtype =>
@@ -74,4 +77,7 @@ private[example] trait MagnoliaEncoder extends Derivation[Encoder] {
 
 object EncoderSemi extends MagnoliaEncoder
 
-object EncoderAuto extends MagnoliaEncoder with AutoDerivation[Encoder]
+object EncoderAuto extends MagnoliaEncoder {
+
+  implicit inline def deriveEncoder[A](implicit m: Mirror.Of[A]): Encoder[A] = derived
+}

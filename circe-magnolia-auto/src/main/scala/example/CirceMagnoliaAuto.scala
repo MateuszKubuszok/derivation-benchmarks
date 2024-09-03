@@ -7,11 +7,26 @@ import io.circe.Decoder.Result
 import io.circe.Json
 import io.circe.syntax._
 
+object EncodeHelper {
+
+  def encode(out: Out): Json = out.asJson
+}
+
+object DecoderHelper {
+
+  def decode(json: Json): Result[Out] = json.as[Out]
+}
+
 object CirceMagnoliaAuto {
 
   def roundTrip(out: Out): (Json, Result[Out]) = {
-    val json = out.asJson//(EncoderAuto.derived)
-    val parsed = json.as[Out]//(DecoderAuto.derived)
+    // workaround for:
+    // [error] Error while emitting example/CirceMagnoliaAuto$
+    // [error] Class too large: example/CirceMagnoliaAuto$
+    // [error] one error found
+    // on Scala 3 xD
+    val json = EncodeHelper.encode(out)
+    val parsed = DecoderHelper.decode(json)
     json -> parsed
   }
 

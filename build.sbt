@@ -9,7 +9,7 @@ val versions = new {
   val platforms = List(VirtualAxis.jvm)
 
   // Which version should be used in IntelliJ
-  val ideScala = scala2
+  val ideScala = scala3
   val idePlatform = VirtualAxis.jvm
 }
 
@@ -104,6 +104,14 @@ lazy val circeMagnoliaAuto = projectMatrix
   .in(file("circe-magnolia-auto"))
   .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE: _*)
   .settings(dependencies *)
+  .settings(
+    scalacOptions ++= {
+      CrossVersion.partialVersion(scalaVersion.value) match {
+        case Some((3, _)) => Seq("-Xmax-inlines", "64")
+        case Some((2, _)) => Seq()
+      }
+    }
+  )
   .dependsOn(testClasses, circeMagnolia)
 
 lazy val circeMagnoliaSemi = projectMatrix
