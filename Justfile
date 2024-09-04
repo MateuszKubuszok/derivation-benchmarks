@@ -14,6 +14,8 @@ coldJvmCompile:
   sbt --no-server circeMagnoliaAuto3/clean "show circeMagnoliaAuto3/name" circeMagnoliaAuto3/compile
   sbt --no-server circeMagnoliaSemi/clean  "show circeMagnoliaSemi/name"  circeMagnoliaSemi/compile
   sbt --no-server circeMagnoliaSemi3/clean "show circeMagnoliaSemi3/name" circeMagnoliaSemi3/compile
+  sbt --no-server jsoniterScalaSemi/clean  "show jsoniterScalaSemi/name"  jsoniterScalaSemi/compile
+  sbt --no-server jsoniterScalaSemi3/clean "show jsoniterScalaSemi3/name" jsoniterScalaSemi3/compile
 
 [doc('Compile each measured project with how JVM (like with development)')]
 hotJvmCompile:
