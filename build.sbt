@@ -1,4 +1,4 @@
-import commandmatrix.extra._
+import commandmatrix.extra.*
 
 val versions = new {
   val scala2 = "2.13.14"
@@ -75,6 +75,7 @@ lazy val circeGenericAuto = projectMatrix
       CrossVersion.partialVersion(scalaVersion.value) match {
         case Some((3, _)) => Seq("-Xmax-inlines", "64")
         case Some((2, _)) => Seq()
+        case _            => ???
       }
     }
   )
@@ -100,6 +101,7 @@ lazy val circeMagnolia = projectMatrix
       CrossVersion.partialVersion(scalaVersion.value) match {
         case Some((3, _)) => Seq("com.softwaremill.magnolia1_3" %% "magnolia" % "1.3.7")
         case Some((2, _)) => Seq("com.softwaremill.magnolia1_2" %% "magnolia" % "1.1.10")
+        case _            => ???
       }
     }
   )
@@ -113,6 +115,7 @@ lazy val circeMagnoliaAuto = projectMatrix
       CrossVersion.partialVersion(scalaVersion.value) match {
         case Some((3, _)) => Seq("-Xmax-inlines", "64")
         case Some((2, _)) => Seq()
+        case _            => ???
       }
     }
   )
@@ -135,3 +138,45 @@ lazy val jsoniterScalaSemi = projectMatrix
     libraryDependencies += "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-macros" % "2.30.9"
   )
   .dependsOn(testClasses)
+
+// aliases
+
+val projectName: ProjectReference => String = ref =>
+  sbt.Reference.display(ref).replace("{<this>}": CharSequence, "": CharSequence)
+
+val utilityProjects = testClasses.projectRefs ++ circeMagnolia.projectRefs
+
+// help the tasks below to measure THEIR overhead, not overhead of compiling the dependencies
+addCommandAlias(
+  "prepare",
+  ("update" +: utilityProjects.map(projectName).map(name => s"$name/compile")).mkString(" ; ")
+)
+
+val measuredProjects =
+  circeGenericAuto.projectRefs ++ circeGenericSemi.projectRefs ++ circeMagnoliaAuto.projectRefs ++ circeMagnoliaSemi.projectRefs ++ circeMagnolia.projectRefs
+
+// compile all measured projects with cold JVM
+addCommandAlias(
+  "coldJvmCompile",
+  measuredProjects
+    .map(projectName)
+    .flatMap(name => Seq("reboot", s"show $name/name", s"$name/compile", s"$name/clean"))
+    .mkString(" ; ")
+)
+// compile all measured projects with hot JVM
+addCommandAlias(
+  "hotJvmCompile", {
+    val tasks =
+      measuredProjects.map(projectName).flatMap(name => Seq(s"show $name/name", s"$name/compile", s"$name/clean"))
+    Seq(
+      Seq("set logLevel := Level.Error"),
+      tasks,
+      tasks,
+      tasks,
+      tasks,
+      tasks,
+      Seq("set logLevel := Level.Info"),
+      tasks
+    ).flatten.mkString(" ; ")
+  }
+)
