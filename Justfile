@@ -43,3 +43,10 @@ hotJvmCompile:
     jsoniterScalaSemi/clean  "show jsoniterScalaSemi/name"  jsoniterScalaSemi/compile \
     jsoniterScalaSemi3/clean "show jsoniterScalaSemi3/name" jsoniterScalaSemi3/compile \
     projects
+
+[doc('Benchmark runtime')]
+runtime:
+  sbt --no-server \
+    benchmarks/Jmh/run \
+    benchmarks3/Jmh/run \
+    projects

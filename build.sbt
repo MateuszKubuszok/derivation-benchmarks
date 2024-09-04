@@ -139,44 +139,8 @@ lazy val jsoniterScalaSemi = projectMatrix
   )
   .dependsOn(testClasses)
 
-// aliases
-
-val projectName: ProjectReference => String = ref =>
-  sbt.Reference.display(ref).replace("{<this>}": CharSequence, "": CharSequence)
-
-val utilityProjects = testClasses.projectRefs ++ circeMagnolia.projectRefs
-
-// help the tasks below to measure THEIR overhead, not overhead of compiling the dependencies
-addCommandAlias(
-  "prepare",
-  ("update" +: utilityProjects.map(projectName).map(name => s"$name/compile")).mkString(" ; ")
-)
-
-val measuredProjects =
-  circeGenericAuto.projectRefs ++ circeGenericSemi.projectRefs ++ circeMagnoliaAuto.projectRefs ++ circeMagnoliaSemi.projectRefs ++ circeMagnolia.projectRefs
-
-// compile all measured projects with cold JVM
-addCommandAlias(
-  "coldJvmCompile",
-  measuredProjects
-    .map(projectName)
-    .flatMap(name => Seq("reboot", s"show $name/name", s"$name/compile", s"$name/clean"))
-    .mkString(" ; ")
-)
-// compile all measured projects with hot JVM
-addCommandAlias(
-  "hotJvmCompile", {
-    val tasks =
-      measuredProjects.map(projectName).flatMap(name => Seq(s"show $name/name", s"$name/compile", s"$name/clean"))
-    Seq(
-      Seq("set logLevel := Level.Error"),
-      tasks,
-      tasks,
-      tasks,
-      tasks,
-      tasks,
-      Seq("set logLevel := Level.Info"),
-      tasks
-    ).flatten.mkString(" ; ")
-  }
-)
+lazy val benchmarks = projectMatrix
+  .in(file("benchmarks"))
+  .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE *)
+  .dependsOn(circeGenericAuto, circeGenericSemi, circeMagnoliaAuto, circeMagnoliaSemi, jsoniterScalaSemi)
+  .enablePlugins(JmhPlugin)
