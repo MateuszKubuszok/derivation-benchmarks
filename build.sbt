@@ -44,27 +44,30 @@ val dependencies = Seq(
   }
 )
 
+// all projects
+
 lazy val root = project
   .in(file("."))
-  .aggregate(testClasses.projectRefs*)
-  .aggregate(circeGenericAuto.projectRefs*)
-  .aggregate(circeGenericSemi.projectRefs*)
-  .aggregate(circeMagnolia.projectRefs*)
-  .aggregate(circeMagnoliaAuto.projectRefs*)
-  .aggregate(circeMagnoliaSemi.projectRefs*)
+  .aggregate(testClasses.projectRefs *)
+  .aggregate(circeGenericAuto.projectRefs *)
+  .aggregate(circeGenericSemi.projectRefs *)
+  .aggregate(circeMagnolia.projectRefs *)
+  .aggregate(circeMagnoliaAuto.projectRefs *)
+  .aggregate(circeMagnoliaSemi.projectRefs *)
+  .aggregate(jsoniterScalaSemi.projectRefs *)
 
 // classes for which we will derive things
 
 lazy val testClasses = projectMatrix
   .in(file("test-classes"))
-  .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE: _*)
+  .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE *)
   .settings(dependencies *)
 
 // Circe-related experiments
 
 lazy val circeGenericAuto = projectMatrix
   .in(file("circe-generic-auto"))
-  .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE: _*)
+  .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE *)
   .settings(dependencies *)
   .settings(
     libraryDependencies += "io.circe" %%% "circe-generic" % "0.14.9",
@@ -79,16 +82,17 @@ lazy val circeGenericAuto = projectMatrix
 
 lazy val circeGenericSemi = projectMatrix
   .in(file("circe-generic-semi"))
-  .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE: _*)
+  .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE *)
   .settings(dependencies *)
   .settings(
     libraryDependencies += "io.circe" %% "circe-generic" % "0.14.9"
   )
   .dependsOn(testClasses)
 
+// apparently all Magnolia-based Circe integrations are outdated(?)
 lazy val circeMagnolia = projectMatrix
   .in(file("circe-magnolia"))
-  .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE: _*)
+  .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE *)
   .settings(dependencies *)
   .settings(
     libraryDependencies += "io.circe" %%% "circe-core" % "0.14.9",
@@ -102,7 +106,7 @@ lazy val circeMagnolia = projectMatrix
 
 lazy val circeMagnoliaAuto = projectMatrix
   .in(file("circe-magnolia-auto"))
-  .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE: _*)
+  .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE *)
   .settings(dependencies *)
   .settings(
     scalacOptions ++= {
@@ -116,6 +120,18 @@ lazy val circeMagnoliaAuto = projectMatrix
 
 lazy val circeMagnoliaSemi = projectMatrix
   .in(file("circe-magnolia-semi"))
-  .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE: _*)
+  .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE *)
   .settings(dependencies *)
   .dependsOn(testClasses, circeMagnolia)
+
+// Jsoniter Scala-related experiments
+
+lazy val jsoniterScalaSemi = projectMatrix
+  .in(file("jsoniter-scala-semi"))
+  .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE *)
+  .settings(dependencies *)
+  .settings(
+    libraryDependencies += "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-core" % "2.30.9",
+    libraryDependencies += "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-macros" % "2.30.9"
+  )
+  .dependsOn(testClasses)
