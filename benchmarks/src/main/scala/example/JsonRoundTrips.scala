@@ -26,7 +26,7 @@ import org.openjdk.jmh.annotations._
 )
 @BenchmarkMode(Array(Mode.Throughput))
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
-class JsonRoundTrips {
+class JsonRoundTrips extends JsonRoundTripPlatform {
 
   val out = _root_.example.model1.Out.example
 

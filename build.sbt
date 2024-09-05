@@ -54,6 +54,8 @@ lazy val root = project
   .aggregate(circeMagnolia.projectRefs *)
   .aggregate(circeMagnoliaAuto.projectRefs *)
   .aggregate(circeMagnoliaSemi.projectRefs *)
+  .aggregate(jsoniterScalaWrapper.projectRefs *)
+  .aggregate(jsoniterScalaSanely.projectRefs *)
   .aggregate(jsoniterScalaSemi.projectRefs *)
 
 // classes for which we will derive things
@@ -129,6 +131,21 @@ lazy val circeMagnoliaSemi = projectMatrix
 
 // Jsoniter Scala-related experiments
 
+lazy val jsoniterScalaWrapper = projectMatrix
+  .in(file("jsoniter-scala-wrapper"))
+  .someVariations(List(versions.scala3), versions.platforms)(only1VersionInIDE *)
+  .settings(dependencies *)
+  .settings(
+    libraryDependencies += "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-core" % "2.30.9",
+    libraryDependencies += "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-macros" % "2.30.9"
+  )
+
+lazy val jsoniterScalaSanely = projectMatrix
+  .in(file("jsoniter-scala-sanely"))
+  .someVariations(List(versions.scala3), versions.platforms)(only1VersionInIDE *)
+  .settings(dependencies *)
+  .dependsOn(testClasses, jsoniterScalaWrapper)
+
 lazy val jsoniterScalaSemi = projectMatrix
   .in(file("jsoniter-scala-semi"))
   .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE *)
@@ -141,6 +158,16 @@ lazy val jsoniterScalaSemi = projectMatrix
 
 lazy val benchmarks = projectMatrix
   .in(file("benchmarks"))
-  .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE *)
-  .dependsOn(circeGenericAuto, circeGenericSemi, circeMagnoliaAuto, circeMagnoliaSemi, jsoniterScalaSemi)
+  .someVariations(versions.scalas, versions.platforms)(
+    (MatrixAction
+      .ForScala(_.isScala3)
+      .Configure(_.dependsOn(jsoniterScalaSanely.jvm(versions.scala3))) +: only1VersionInIDE).toSeq *
+  )
+  .dependsOn(
+    circeGenericAuto,
+    circeGenericSemi,
+    circeMagnoliaAuto,
+    circeMagnoliaSemi,
+    jsoniterScalaSemi
+  )
   .enablePlugins(JmhPlugin)
