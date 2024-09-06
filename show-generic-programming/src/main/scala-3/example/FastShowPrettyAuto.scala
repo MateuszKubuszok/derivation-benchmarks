@@ -8,7 +8,7 @@ object FastShowPrettyAuto {
 
   // uses  FastShowPretty[Element] for each Product/Sum element
   // gives FastShowPretty[A]
-  implicit inline def deriveShowAutomatic[A](using m: Mirror.Of[A]): FastShowPretty[A] =
+  implicit inline def deriveShowAutomatic[A](implicit m: Mirror.Of[A]): FastShowPretty[A] =
     inline m match {
       case p: Mirror.ProductOf[A]   => deriveProduct[A](using p)
       case s: Mirror.SumOf[A]       => deriveSumType[A](using s)
@@ -16,7 +16,7 @@ object FastShowPrettyAuto {
       case _: Mirror.SingletonProxy => primitive(_ => valueOf[m.MirroredLabel])
     }
 
-  inline def deriveProduct[A](using p: Mirror.ProductOf[A]): FastShowPretty[A] =
+  inline def deriveProduct[A](implicit p: Mirror.ProductOf[A]): FastShowPretty[A] =
     new FastShowPretty[A] {
       private val name: String = valueOf[p.MirroredLabel]
       private val meta: Array[(String, FastShowPretty[Any])] = {
@@ -37,13 +37,13 @@ object FastShowPrettyAuto {
             typeclass.showPretty(field, sb, indent, nesting + 1).append(",\n")
           }
           sb.deleteCharAt(sb.length() - 2) // removes last ',' (last-but-1 char, where length-1 is last char)
-          sb.append(")")
+          repeatAppend(sb, indent, nesting).append(")")
         }
         sb
       }
     }
 
-  inline def deriveSumType[A](using s: Mirror.SumOf[A]): FastShowPretty[A] =
+  inline def deriveSumType[A](implicit s: Mirror.SumOf[A]): FastShowPretty[A] =
     new FastShowPretty[A] {
       private val instances =
         summonAll[Tuple.Map[s.MirroredElemTypes, FastShowPretty]].toList.asInstanceOf[List[FastShowPretty[Any]]].toArray

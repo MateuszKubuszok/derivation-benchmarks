@@ -53,6 +53,8 @@ lazy val root = project
   .in(file("."))
   .aggregate(testClasses.projectRefs *)
   .aggregate(showGenericProgramming.projectRefs *)
+  .aggregate(showGenericProgrammingAuto.projectRefs *)
+  .aggregate(showGenericProgrammingSemi.projectRefs *)
   .aggregate(circeGenericAuto.projectRefs *)
   .aggregate(circeGenericSemi.projectRefs *)
   .aggregate(circeMagnolia.projectRefs *)
@@ -84,6 +86,27 @@ lazy val showGenericProgramming = projectMatrix
       }
     }
   )
+
+lazy val showGenericProgrammingAuto = projectMatrix
+  .in(file("show-generic-programming-auto"))
+  .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE *)
+  .settings(commonSettings *)
+  .settings(
+    scalacOptions ++= {
+      CrossVersion.partialVersion(scalaVersion.value) match {
+        case Some((3, _)) => Seq("-Xmax-inlines", "64")
+        case Some((2, _)) => Seq()
+        case _            => ???
+      }
+    }
+  )
+  .dependsOn(testClasses, showGenericProgramming)
+
+lazy val showGenericProgrammingSemi = projectMatrix
+  .in(file("show-generic-programming-semi"))
+  .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE *)
+  .settings(commonSettings *)
+  .dependsOn(testClasses, showGenericProgramming)
 
 // Circe-related experiments
 
