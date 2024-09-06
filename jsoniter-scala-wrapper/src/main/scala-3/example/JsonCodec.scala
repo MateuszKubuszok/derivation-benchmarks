@@ -22,8 +22,17 @@ object JsonCodec {
   sealed trait AutoDerived[A] {
     val codec: JsonValueCodec[A]
   }
-  object AutoDerived {
-    inline given derived[A](using
+  object AutoDerived extends LowPriorityAutoDerived {
+    inline def derived[A](using
+        inline config: Config = Config.withAllowRecursiveTypes(true)
+    ): JsonCodec.AutoDerived[A] = {
+      given [A: KeyCodec]: JsonKeyCodec[A] = summon[KeyCodec[A]].codec
+      given [A: JsonCodec.AutoDerived]: JsonValueCodec[A] = summon[JsonCodec.AutoDerived[A]].codec
+      fromJsoniter(JsonCodecMaker.make[A](config))
+    }
+  }
+  trait LowPriorityAutoDerived {
+    inline given autoDerived[A](using
         inline config: Config = Config.withAllowRecursiveTypes(true)
     ): JsonCodec.AutoDerived[A] = JsonCodec.derived
   }
