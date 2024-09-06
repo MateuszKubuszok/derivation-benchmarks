@@ -9,7 +9,7 @@ val versions = new {
   val platforms = List(VirtualAxis.jvm)
 
   // Which version should be used in IntelliJ
-  val ideScala = scala3
+  val ideScala = scala2
   val idePlatform = VirtualAxis.jvm
 }
 
@@ -29,17 +29,20 @@ val only1VersionInIDE =
         .Configure(_.settings(ideSkipProject := true, bspEnabled := false))
     }
 
-val dependencies = Seq(
+val commonSettings = Seq(
   libraryDependencies ++= Seq(
     "org.scalameta" %%% "munit" % "1.0.1" % Test
   ),
   libraryDependencies ++= {
     CrossVersion.partialVersion(scalaVersion.value) match {
-      case Some((2, _)) =>
-        Seq(
-          "org.scala-lang" % "scala-reflect" % scalaVersion.value % Provided
-        )
-      case _ => Seq.empty
+      case Some((2, _)) => Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value % Provided)
+      case _            => Seq.empty
+    }
+  },
+  scalacOptions ++= {
+    CrossVersion.partialVersion(scalaVersion.value) match {
+      case Some((3, _)) => Seq("-no-indent")
+      case _            => Seq.empty
     }
   }
 )
@@ -49,6 +52,7 @@ val dependencies = Seq(
 lazy val root = project
   .in(file("."))
   .aggregate(testClasses.projectRefs *)
+  .aggregate(showGenericProgramming.projectRefs *)
   .aggregate(circeGenericAuto.projectRefs *)
   .aggregate(circeGenericSemi.projectRefs *)
   .aggregate(circeMagnolia.projectRefs *)
@@ -63,14 +67,30 @@ lazy val root = project
 lazy val testClasses = projectMatrix
   .in(file("test-classes"))
   .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE *)
-  .settings(dependencies *)
+  .settings(commonSettings *)
+
+// Show-related experiments:
+
+lazy val showGenericProgramming = projectMatrix
+  .in(file("show-generic-programming"))
+  .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE *)
+  .settings(commonSettings *)
+  .settings(
+    libraryDependencies ++= {
+      CrossVersion.partialVersion(scalaVersion.value) match {
+        case Some((3, _)) => Seq() // Scala 3 has mirrors
+        case Some((2, _)) => Seq("com.chuusai" %% "shapeless" % "2.3.12")
+        case _            => ???
+      }
+    }
+  )
 
 // Circe-related experiments
 
 lazy val circeGenericAuto = projectMatrix
   .in(file("circe-generic-auto"))
   .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE *)
-  .settings(dependencies *)
+  .settings(commonSettings *)
   .settings(
     libraryDependencies += "io.circe" %%% "circe-generic" % "0.14.9",
     scalacOptions ++= {
@@ -86,7 +106,7 @@ lazy val circeGenericAuto = projectMatrix
 lazy val circeGenericSemi = projectMatrix
   .in(file("circe-generic-semi"))
   .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE *)
-  .settings(dependencies *)
+  .settings(commonSettings *)
   .settings(
     libraryDependencies += "io.circe" %% "circe-generic" % "0.14.9"
   )
@@ -96,7 +116,7 @@ lazy val circeGenericSemi = projectMatrix
 lazy val circeMagnolia = projectMatrix
   .in(file("circe-magnolia"))
   .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE *)
-  .settings(dependencies *)
+  .settings(commonSettings *)
   .settings(
     libraryDependencies += "io.circe" %%% "circe-core" % "0.14.9",
     libraryDependencies ++= {
@@ -111,7 +131,7 @@ lazy val circeMagnolia = projectMatrix
 lazy val circeMagnoliaAuto = projectMatrix
   .in(file("circe-magnolia-auto"))
   .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE *)
-  .settings(dependencies *)
+  .settings(commonSettings *)
   .settings(
     scalacOptions ++= {
       CrossVersion.partialVersion(scalaVersion.value) match {
@@ -126,15 +146,18 @@ lazy val circeMagnoliaAuto = projectMatrix
 lazy val circeMagnoliaSemi = projectMatrix
   .in(file("circe-magnolia-semi"))
   .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE *)
-  .settings(dependencies *)
-  .dependsOn(testClasses, circeMagnolia)
+  .settings(commonSettings *)
+  .dependsOn(
+    testClasses,
+    circeMagnolia
+  )
 
 // Jsoniter Scala-related experiments
 
 lazy val jsoniterScalaWrapper = projectMatrix
   .in(file("jsoniter-scala-wrapper"))
   .someVariations(List(versions.scala3), versions.platforms)(only1VersionInIDE *)
-  .settings(dependencies *)
+  .settings(commonSettings *)
   .settings(
     libraryDependencies += "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-core" % "2.30.9",
     libraryDependencies += "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-macros" % "2.30.9"
@@ -143,13 +166,13 @@ lazy val jsoniterScalaWrapper = projectMatrix
 lazy val jsoniterScalaSanely = projectMatrix
   .in(file("jsoniter-scala-sanely"))
   .someVariations(List(versions.scala3), versions.platforms)(only1VersionInIDE *)
-  .settings(dependencies *)
+  .settings(commonSettings *)
   .dependsOn(testClasses, jsoniterScalaWrapper)
 
 lazy val jsoniterScalaSemi = projectMatrix
   .in(file("jsoniter-scala-semi"))
   .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE *)
-  .settings(dependencies *)
+  .settings(commonSettings *)
   .settings(
     libraryDependencies += "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-core" % "2.30.9",
     libraryDependencies += "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-macros" % "2.30.9"
