@@ -210,6 +210,8 @@ lazy val benchmarks = projectMatrix
       .Configure(_.dependsOn(jsoniterScalaSanely.jvm(versions.scala3))) +: only1VersionInIDE).toSeq *
   )
   .dependsOn(
+    showGenericProgrammingAuto,
+    showGenericProgrammingSemi,
     circeGenericAuto,
     circeGenericSemi,
     circeMagnoliaAuto,

@@ -1,6 +1,6 @@
 package example
 
-import example.model1._
+import example.model1.*
 
 object JsoniterScalaSanely {
 

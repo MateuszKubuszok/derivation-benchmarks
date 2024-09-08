@@ -9,7 +9,11 @@ object FastShowPretty {
   def primitive[A](f: A => String): FastShowPretty[A] =
     (value: A, sb: StringBuilder, _: String, _: Int) => sb.append(f(value))
 
-  def collection[A: FastShowPretty, CC](name: String, isEmpty: CC => Boolean, foreach: CC => (A => Unit) => Unit): FastShowPretty[CC] =
+  def collection[A: FastShowPretty, CC](
+      name: String,
+      isEmpty: CC => Boolean,
+      foreach: CC => (A => Unit) => Unit
+  ): FastShowPretty[CC] =
     (value: CC, sb: StringBuilder, indent: String, nesting: Int) => {
       sb.append(name).append("(")
       if (isEmpty(value)) {
@@ -21,7 +25,7 @@ object FastShowPretty {
           implicitly[FastShowPretty[A]].showPretty(a, sb, indent, nesting + 1).append(",\n")
           ()
         }
-        sb.deleteCharAt(sb.length() - 2) // removes last ',' (last-but-1 char, where length-1 is last char) 
+        sb.deleteCharAt(sb.length() - 2) // removes last ',' (last-but-1 char, where length-1 is last char)
         repeatAppend(sb, indent, nesting)
       }
     }

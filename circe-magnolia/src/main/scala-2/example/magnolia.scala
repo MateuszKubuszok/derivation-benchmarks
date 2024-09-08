@@ -68,7 +68,7 @@ object DecoderAuto extends MagnoliaDecoder {
   implicit def derivedDecoder[T]: Typeclass[T] = macro Magnolia.gen[T]
 }
 
-private[example] trait MagnoliaEncoder  {
+private[example] trait MagnoliaEncoder {
 
   def join[T](caseClass: CaseClass[Encoder, T]): Encoder[T] =
     (a: T) =>

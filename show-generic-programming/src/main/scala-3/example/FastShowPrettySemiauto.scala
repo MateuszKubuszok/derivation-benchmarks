@@ -8,5 +8,4 @@ object FastShowPrettySemiauto {
     // this wouldn't be so easy with Shapeless
     FastShowPrettyAuto.deriveShowAutomatic
 
-
 }
