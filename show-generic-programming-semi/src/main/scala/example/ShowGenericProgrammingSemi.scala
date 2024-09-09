@@ -1,7 +1,8 @@
 package example
 
 import example.model1._
-import FastShowPrettySemiauto._
+import example.showgeneric._
+import example.showgeneric.FastShowPrettySemiauto._
 
 object ShowGenericProgrammingSemi {
 

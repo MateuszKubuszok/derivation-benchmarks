@@ -1,4 +1,6 @@
-package object example {
+package example
+
+package object showgeneric {
 
   implicit class FastShowPrettyOps[A](private val value: A) {
 

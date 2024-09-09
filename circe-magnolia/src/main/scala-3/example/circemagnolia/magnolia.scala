@@ -1,4 +1,4 @@
-package example
+package example.circemagnolia
 
 import cats.syntax.either.*
 import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json}
@@ -9,7 +9,7 @@ import scala.deriving.Mirror
 
 // based on https://github.com/vpavkin/circe-magnolia/
 
-private[example] trait MagnoliaDecoder extends Derivation[Decoder] {
+private[circemagnolia] trait MagnoliaDecoder extends Derivation[Decoder] {
 
   def join[T](caseClass: CaseClass[Decoder, T]): Decoder[T] =
     (c: HCursor) =>
@@ -61,7 +61,7 @@ object DecoderAuto extends MagnoliaDecoder {
   implicit inline def deriveDecoder[A](implicit m: Mirror.Of[A]): Decoder[A] = derived
 }
 
-private[example] trait MagnoliaEncoder extends Derivation[Encoder] {
+private[circemagnolia] trait MagnoliaEncoder extends Derivation[Encoder] {
 
   def join[T](caseClass: CaseClass[Encoder, T]): Encoder[T] =
     (a: T) =>

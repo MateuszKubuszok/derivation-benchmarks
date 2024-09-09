@@ -1,7 +1,7 @@
 package example
 
 import example.model1._
-import example.{DecoderSemi, EncoderSemi}
+import example.circemagnolia.{DecoderSemi, EncoderSemi}
 import io.circe.Decoder.Result
 import io.circe.{Decoder, Encoder, Json}
 import io.circe.syntax._

@@ -108,6 +108,21 @@ lazy val showGenericProgrammingSemi = projectMatrix
   .settings(commonSettings *)
   .dependsOn(testClasses, showGenericProgramming)
 
+lazy val showMagnolia = projectMatrix
+  .in(file("show-magnolia"))
+  .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE *)
+  .settings(commonSettings *)
+  .settings(
+    libraryDependencies ++= {
+      CrossVersion.partialVersion(scalaVersion.value) match {
+        case Some((3, _)) => Seq("com.softwaremill.magnolia1_3" %% "magnolia" % "1.3.7")
+        case Some((2, _)) => Seq("com.softwaremill.magnolia1_2" %% "magnolia" % "1.1.10")
+        case _            => ???
+      }
+    }
+  )
+  .dependsOn(showGenericProgramming)
+
 // Circe-related experiments
 
 lazy val circeGenericAuto = projectMatrix

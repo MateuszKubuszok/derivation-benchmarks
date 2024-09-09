@@ -1,7 +1,8 @@
 package example
 
 import example.model1.Out
-import FastShowPrettyAuto._
+import example.showgeneric._
+import example.showgeneric.FastShowPrettyAuto._
 
 object ShowGenericProgrammingAuto {
 

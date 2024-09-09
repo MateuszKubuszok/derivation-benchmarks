@@ -1,4 +1,4 @@
-package example
+package example.jsonitersanely
 
 import com.github.plokhotnyuk.jsoniter_scala.core.{JsonKeyCodec, JsonReader, JsonWriter}
 

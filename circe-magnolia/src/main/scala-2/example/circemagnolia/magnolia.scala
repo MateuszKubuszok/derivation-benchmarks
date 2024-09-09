@@ -1,15 +1,14 @@
-package example
+package example.circemagnolia
 
 import cats.syntax.either._
-import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json}
-import io.circe.Decoder.Result
+import io.circe._
 import magnolia1._
 
 import scala.language.experimental.macros
 
 // based on https://github.com/vpavkin/circe-magnolia/
 
-private[example] trait MagnoliaDecoder {
+private[circemagnolia] trait MagnoliaDecoder {
 
   def join[T](caseClass: CaseClass[Decoder, T]): Decoder[T] =
     (c: HCursor) =>
@@ -68,7 +67,7 @@ object DecoderAuto extends MagnoliaDecoder {
   implicit def derivedDecoder[T]: Typeclass[T] = macro Magnolia.gen[T]
 }
 
-private[example] trait MagnoliaEncoder {
+private[circemagnolia] trait MagnoliaEncoder {
 
   def join[T](caseClass: CaseClass[Encoder, T]): Encoder[T] =
     (a: T) =>

@@ -1,4 +1,4 @@
-package example
+package example.showgeneric
 
 import shapeless._
 import shapeless.labelled.FieldType

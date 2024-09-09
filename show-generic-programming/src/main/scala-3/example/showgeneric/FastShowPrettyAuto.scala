@@ -1,4 +1,4 @@
-package example
+package example.showgeneric
 
 import scala.compiletime.*
 import scala.deriving.*

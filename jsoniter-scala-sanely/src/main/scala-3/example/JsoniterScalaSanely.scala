@@ -1,5 +1,6 @@
 package example
 
+import example.jsonitersanely.*
 import example.model1.*
 
 object JsoniterScalaSanely {

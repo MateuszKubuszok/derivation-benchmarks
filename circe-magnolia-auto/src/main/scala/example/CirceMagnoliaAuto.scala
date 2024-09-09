@@ -1,7 +1,7 @@
 package example
 
-import example.DecoderAuto._
-import example.EncoderAuto._
+import example.circemagnolia.DecoderAuto._
+import example.circemagnolia.EncoderAuto._
 import example.model1.Out
 import io.circe.Decoder.Result
 import io.circe.Json

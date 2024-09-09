@@ -1,4 +1,4 @@
-package example
+package example.showgeneric
 
 trait FastShowPretty[A] {
 
