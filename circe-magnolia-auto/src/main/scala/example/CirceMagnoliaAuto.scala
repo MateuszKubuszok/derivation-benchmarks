@@ -1,11 +1,11 @@
 package example
 
-import example.circemagnolia.DecoderAuto._
-import example.circemagnolia.EncoderAuto._
+import example.circemagnolia.DecoderAuto.*
+import example.circemagnolia.EncoderAuto.*
 import example.model1.Out
 import io.circe.Decoder.Result
 import io.circe.Json
-import io.circe.syntax._
+import io.circe.syntax.*
 
 object EncodeHelper {
 

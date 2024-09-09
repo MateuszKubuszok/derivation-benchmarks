@@ -1,10 +1,10 @@
 package example
 
-import example.model1._
+import example.model1.*
 import io.circe.Decoder.Result
 import io.circe.{Decoder, Encoder, Json}
-import io.circe.generic.semiauto._
-import io.circe.syntax._
+import io.circe.generic.semiauto.*
+import io.circe.syntax.*
 
 object CirceGenericSemi {
 

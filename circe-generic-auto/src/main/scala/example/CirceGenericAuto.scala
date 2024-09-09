@@ -3,8 +3,8 @@ package example
 import example.model1.Out
 import io.circe.Decoder.Result
 import io.circe.Json
-import io.circe.generic.auto._
-import io.circe.syntax._
+import io.circe.generic.auto.*
+import io.circe.syntax.*
 
 object CirceGenericAuto {
 

@@ -1,8 +1,8 @@
 package example
 
 import example.model1.Out
-import example.showmagnolia._
-import example.showmagnolia.FastShowPrettyAuto._
+import example.showmagnolia.*
+import example.showmagnolia.FastShowPrettyAuto.*
 
 object ShowMagnoliaAuto {
 

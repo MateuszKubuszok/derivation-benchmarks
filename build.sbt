@@ -42,7 +42,7 @@ val commonSettings = Seq(
   scalacOptions ++= {
     CrossVersion.partialVersion(scalaVersion.value) match {
       case Some((3, _)) => Seq("-no-indent")
-      case _            => Seq.empty
+      case _            => Seq("-Xsource:3")
     }
   }
 )
@@ -145,6 +145,14 @@ lazy val showMagnoliaSemi = projectMatrix
   .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE *)
   .settings(commonSettings *)
   .dependsOn(testClasses, showMagnolia)
+
+lazy val showMacros = projectMatrix
+  .in(file("show-macros"))
+  .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE *)
+  .settings(commonSettings *)
+  .settings(
+    libraryDependencies += "io.scalaland" %% "chimney-macro-commons" % "1.4.0"
+  )
 
 // Circe-related experiments
 

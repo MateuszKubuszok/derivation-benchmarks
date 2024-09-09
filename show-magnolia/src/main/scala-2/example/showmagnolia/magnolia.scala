@@ -1,7 +1,7 @@
 package example.showmagnolia
 
-import magnolia1._
-import FastShowPretty._
+import magnolia1.*
+import FastShowPretty.*
 
 import scala.language.experimental.macros
 

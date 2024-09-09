@@ -1,9 +1,9 @@
 package example.showgeneric
 
-import shapeless._
+import shapeless.*
 import shapeless.labelled.FieldType
 import scala.reflect.ClassTag
-import FastShowPretty._
+import FastShowPretty.*
 
 object FastShowPrettyAuto {
 

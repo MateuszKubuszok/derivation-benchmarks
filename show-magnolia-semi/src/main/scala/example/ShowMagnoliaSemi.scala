@@ -1,7 +1,7 @@
 package example
 
-import example.model1._
-import example.showmagnolia._
+import example.model1.*
+import example.showmagnolia.*
 import example.showmagnolia.FastShowPrettySemiauto
 
 object ShowMagnoliaSemi {

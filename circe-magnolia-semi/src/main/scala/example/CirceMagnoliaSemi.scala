@@ -1,10 +1,10 @@
 package example
 
-import example.model1._
+import example.model1.*
 import example.circemagnolia.{DecoderSemi, EncoderSemi}
 import io.circe.Decoder.Result
 import io.circe.{Decoder, Encoder, Json}
-import io.circe.syntax._
+import io.circe.syntax.*
 
 object CirceMagnoliaSemi {
 

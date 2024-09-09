@@ -1,8 +1,8 @@
 package example.circemagnolia
 
-import cats.syntax.either._
-import io.circe._
-import magnolia1._
+import cats.syntax.either.*
+import io.circe.*
+import magnolia1.*
 
 import scala.language.experimental.macros
 
@@ -73,7 +73,7 @@ private[circemagnolia] trait MagnoliaEncoder {
     (a: A) =>
       Json.obj(caseClass.parameters.map { p =>
         p.label -> p.typeclass(p.dereference(a))
-      }: _*)
+      }*)
 
   def split[A](sealedTrait: SealedTrait[Encoder, A]): Encoder[A] = (a: A) =>
     sealedTrait.split(a) { subtype =>
