@@ -35,4 +35,10 @@ class ShowOutputs {
 
     @Benchmark
     def showGenericProgrammingSemi: Any = ShowGenericProgrammingSemi.printObject(out)
+    
+    @Benchmark
+    def showMagnoliaAuto: Any = ShowMagnoliaAuto.printObject(out)
+
+    @Benchmark
+    def showMagnoliaSemi: Any = ShowMagnoliaSemi.printObject(out)
 }

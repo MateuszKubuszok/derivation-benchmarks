@@ -250,6 +250,8 @@ lazy val benchmarks = projectMatrix
   .dependsOn(
     showGenericProgrammingAuto,
     showGenericProgrammingSemi,
+    showMagnoliaAuto,
+    showMagnoliaSemi,
     circeGenericAuto,
     circeGenericSemi,
     circeMagnoliaAuto,

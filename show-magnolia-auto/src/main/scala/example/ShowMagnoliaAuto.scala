@@ -5,7 +5,7 @@ import example.showmagnolia._
 import example.showmagnolia.FastShowPrettyAuto._
 
 object ShowMagnoliaAuto {
-  
+
   def printObject(out: Out): String = out.showPretty()
 
   def main(args: Array[String]): Unit = {

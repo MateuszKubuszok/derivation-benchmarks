@@ -11,7 +11,7 @@ private[showmagnolia] trait MagnoliaShow extends Derivation[FastShowPretty] {
 
     override def showPretty(value: A, sb: StringBuilder, indent: String, nesting: Int): StringBuilder = {
       sb.append(caseClass.typeInfo.short)
-      if (caseClass.parameters.nonEmpty) {
+      if caseClass.parameters.nonEmpty then {
         sb.append("(\n")
         caseClass.parameters.foreach { param =>
           repeatAppend(sb, indent, nesting + 1).append(param.label).append(" = ")
