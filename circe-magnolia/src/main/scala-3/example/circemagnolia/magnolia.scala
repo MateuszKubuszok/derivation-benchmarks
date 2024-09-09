@@ -11,7 +11,7 @@ import scala.deriving.Mirror
 
 private[circemagnolia] trait MagnoliaDecoder extends Derivation[Decoder] {
 
-  def join[T](caseClass: CaseClass[Decoder, T]): Decoder[T] =
+  def join[A](caseClass: CaseClass[Decoder, A]): Decoder[A] =
     (c: HCursor) =>
       caseClass
         .constructEither { p =>
@@ -19,7 +19,7 @@ private[circemagnolia] trait MagnoliaDecoder extends Derivation[Decoder] {
         }
         .leftMap(_.head)
 
-  def split[T](sealedTrait: SealedTrait[Decoder, T]): Decoder[T] =
+  def split[A](sealedTrait: SealedTrait[Decoder, A]): Decoder[A] =
     (c: HCursor) => {
       val constructorLookup = sealedTrait.subtypes.map { s =>
         s.typeInfo.short -> s
@@ -63,13 +63,13 @@ object DecoderAuto extends MagnoliaDecoder {
 
 private[circemagnolia] trait MagnoliaEncoder extends Derivation[Encoder] {
 
-  def join[T](caseClass: CaseClass[Encoder, T]): Encoder[T] =
-    (a: T) =>
+  def join[A](caseClass: CaseClass[Encoder, A]): Encoder[A] =
+    (a: A) =>
       Json.obj(caseClass.params.map { p =>
         p.label -> p.typeclass(p.deref(a))
       }*)
 
-  def split[T](sealedTrait: SealedTrait[Encoder, T]): Encoder[T] = (a: T) =>
+  def split[A](sealedTrait: SealedTrait[Encoder, A]): Encoder[A] = (a: A) =>
     sealedTrait.choose(a) { subtype =>
       Json.obj(subtype.typeInfo.short -> subtype.typeclass(subtype.cast(a)))
     }

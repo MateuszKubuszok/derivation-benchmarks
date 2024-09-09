@@ -10,7 +10,7 @@ import scala.language.experimental.macros
 
 private[circemagnolia] trait MagnoliaDecoder {
 
-  def join[T](caseClass: CaseClass[Decoder, T]): Decoder[T] =
+  def join[A](caseClass: CaseClass[Decoder, A]): Decoder[A] =
     (c: HCursor) =>
       caseClass
         .constructEither { p =>
@@ -18,7 +18,7 @@ private[circemagnolia] trait MagnoliaDecoder {
         }
         .leftMap(_.head)
 
-  def split[T](sealedTrait: SealedTrait[Decoder, T]): Decoder[T] =
+  def split[A](sealedTrait: SealedTrait[Decoder, A]): Decoder[A] =
     (c: HCursor) => {
       val constructorLookup = sealedTrait.subtypes.map { s =>
         s.typeName.short -> s
@@ -57,25 +57,25 @@ object DecoderSemi extends MagnoliaDecoder {
 
   type Typeclass[A] = Decoder[A]
 
-  def derived[T]: Typeclass[T] = macro Magnolia.gen[T]
+  def derived[A]: Typeclass[A] = macro Magnolia.gen[A]
 }
 
 object DecoderAuto extends MagnoliaDecoder {
 
   type Typeclass[A] = Decoder[A]
 
-  implicit def derivedDecoder[T]: Typeclass[T] = macro Magnolia.gen[T]
+  implicit def derivedDecoder[A]: Typeclass[A] = macro Magnolia.gen[A]
 }
 
 private[circemagnolia] trait MagnoliaEncoder {
 
-  def join[T](caseClass: CaseClass[Encoder, T]): Encoder[T] =
-    (a: T) =>
+  def join[A](caseClass: CaseClass[Encoder, A]): Encoder[A] =
+    (a: A) =>
       Json.obj(caseClass.parameters.map { p =>
         p.label -> p.typeclass(p.dereference(a))
       }: _*)
 
-  def split[T](sealedTrait: SealedTrait[Encoder, T]): Encoder[T] = (a: T) =>
+  def split[A](sealedTrait: SealedTrait[Encoder, A]): Encoder[A] = (a: A) =>
     sealedTrait.split(a) { subtype =>
       Json.obj(subtype.typeName.short -> subtype.typeclass(subtype.cast(a)))
     }
@@ -85,12 +85,12 @@ object EncoderSemi extends MagnoliaEncoder {
 
   type Typeclass[A] = Encoder[A]
 
-  def derived[T]: Typeclass[T] = macro Magnolia.gen[T]
+  def derived[A]: Typeclass[A] = macro Magnolia.gen[A]
 }
 
 object EncoderAuto extends MagnoliaEncoder {
 
   type Typeclass[A] = Encoder[A]
 
-  implicit def derivedEncoder[T]: Typeclass[T] = macro Magnolia.gen[T]
+  implicit def derivedEncoder[A]: Typeclass[A] = macro Magnolia.gen[A]
 }
