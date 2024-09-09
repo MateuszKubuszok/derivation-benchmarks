@@ -9,7 +9,7 @@ val versions = new {
   val platforms = List(VirtualAxis.jvm)
 
   // Which version should be used in IntelliJ
-  val ideScala = scala2
+  val ideScala = scala3
   val idePlatform = VirtualAxis.jvm
 }
 
@@ -55,6 +55,9 @@ lazy val root = project
   .aggregate(showGenericProgramming.projectRefs *)
   .aggregate(showGenericProgrammingAuto.projectRefs *)
   .aggregate(showGenericProgrammingSemi.projectRefs *)
+  .aggregate(showMagnolia.projectRefs *)
+  .aggregate(showMagnoliaAuto.projectRefs *)
+  .aggregate(showMagnoliaSemi.projectRefs *)
   .aggregate(circeGenericAuto.projectRefs *)
   .aggregate(circeGenericSemi.projectRefs *)
   .aggregate(circeMagnolia.projectRefs *)
@@ -121,7 +124,27 @@ lazy val showMagnolia = projectMatrix
       }
     }
   )
-  .dependsOn(showGenericProgramming)
+
+lazy val showMagnoliaAuto = projectMatrix
+  .in(file("show-magnolia-auto"))
+  .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE *)
+  .settings(commonSettings *)
+  .settings(
+    scalacOptions ++= {
+      CrossVersion.partialVersion(scalaVersion.value) match {
+        case Some((3, _)) => Seq("-Xmax-inlines", "64")
+        case Some((2, _)) => Seq()
+        case _            => ???
+      }
+    }
+  )
+  .dependsOn(testClasses, showMagnolia)
+
+lazy val showMagnoliaSemi = projectMatrix
+  .in(file("show-magnolia-semi"))
+  .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE *)
+  .settings(commonSettings *)
+  .dependsOn(testClasses, showMagnolia)
 
 // Circe-related experiments
 
