@@ -26,7 +26,7 @@ object FastShowPretty {
           ()
         }
         sb.deleteCharAt(sb.length() - 2) // removes last ',' (last-but-1 char, where length-1 is last char)
-        repeatAppend(sb, indent, nesting)
+        repeatAppend(sb, indent, nesting).append(")")
       }
     }
 

@@ -2,13 +2,14 @@ package example.showmacros.internal
 
 import example.showmacros.FastShowPretty
 import io.scalaland.chimney.internal.compiletime.Definitions
+import io.scalaland.chimney.internal.compiletime.datatypes.SealedHierarchies
 import io.scalaland.chimney.internal.compiletime.fp.{Applicative, Parallel, Traverse}
 import io.scalaland.chimney.internal.compiletime.fp.Implicits.*
 
 import scala.collection.mutable
 import scala.util.chaining.*
 
-trait Derivation extends Definitions {
+trait Derivation extends Definitions with SealedHierarchies {
 
   // Here we are using utilities from chimney-macro-commons instead of Scala 2/Scala 3 macros directly.
   // We'll use "Show" prefix because we are working on Show library, and we don't want to mix these definitions
@@ -34,14 +35,13 @@ trait Derivation extends Definitions {
     val List: Type.Ctor1[List]
     val Vector: Type.Ctor1[Vector]
 
-    // When needed impoty ShowType.Implicits._
+    // When needed, import ShowType.Implicits._
     // Not defined in Derivation directly because it would be easy to get circular dependencies in the implementation.
     object Implicits {
 
       implicit def fastShowPrettyType[A: Type]: Type[FastShowPretty[A]] = FastShowPretty[A]
 
       implicit def stringBuilderType: Type[StringBuilder] = StringBuilder
-
       implicit def bigIntType: Type[BigInt] = BigInt
       implicit def bugDecimalType: Type[BigDecimal] = BigDecimal
 
@@ -71,19 +71,26 @@ trait Derivation extends Definitions {
     trait StringBuilderModule { this: StringBuilder.type =>
 
       def append(sb: Expr[StringBuilder], value: Expr[String]): Expr[StringBuilder]
-
       def repeatAppend(sb: Expr[StringBuilder], value: Expr[String], times: Expr[Int]): Expr[StringBuilder]
+      def deleteCharAt(sb: Expr[StringBuilder], index: Expr[Int]): Expr[StringBuilder]
+      def length(sb: Expr[StringBuilder]): Expr[Int]
     }
 
     // ...or not
 
     def incInt(int: Expr[Int]): Expr[Int]
+    def lastButOne(int: Expr[Int]): Expr[Int]
 
     def arrayForeach[A: Type, B: Type](expr: Expr[Array[A]], f: Expr[A => B]): Expr[Unit]
+    def arrayIsEmpty[A: Type](expr: Expr[Array[A]]): Expr[Boolean]
     def listForeach[A: Type, B: Type](expr: Expr[List[A]], f: Expr[A => B]): Expr[Unit]
+    def listIsEmpty[A: Type](expr: Expr[List[A]]): Expr[Boolean]
     def vectorForeach[A: Type, B: Type](expr: Expr[Vector[A]], f: Expr[A => B]): Expr[Unit]
+    def vectorIsEmpty[A: Type](expr: Expr[Vector[A]]): Expr[Boolean]
 
     def toString[A: Type](expr: Expr[A]): Expr[String]
+
+    def void[A: Type](expr: Expr[A]): Expr[Unit]
   }
 
   // As the next step, let's define some extension methods to make the work Expr-essions easier:
@@ -99,22 +106,32 @@ trait Derivation extends Definitions {
   }
   implicit class StringBuilderOps(private val sb: Expr[StringBuilder]) {
     def append(value: Expr[String]): Expr[StringBuilder] = ShowExpr.StringBuilder.append(sb, value)
-    def repeatAppend(value: Expr[String], times: Expr[Int]) = ShowExpr.StringBuilder.repeatAppend(sb, value, times)
+    def repeatAppend(value: Expr[String], times: Expr[Int]): Expr[StringBuilder] =
+      ShowExpr.StringBuilder.repeatAppend(sb, value, times)
+    def deleteCharAt(index: Expr[Int]): Expr[StringBuilder] = ShowExpr.StringBuilder.deleteCharAt(sb, index)
+    def length: Expr[Int] = ShowExpr.StringBuilder.length(sb)
   }
   implicit class IntIncOps(private val int: Expr[Int]) {
     def inc: Expr[Int] = ShowExpr.incInt(int)
+    def lastButOne: Expr[Int] = ShowExpr.lastButOne(int)
   }
   implicit class ArrayForeachOps[A: Type](private val expr: Expr[Array[A]]) {
     def foreach[B: Type](f: Expr[A => B]): Expr[Unit] = ShowExpr.arrayForeach[A, B](expr, f)
+    def isEmpty: Expr[Boolean] = ShowExpr.arrayIsEmpty[A](expr)
   }
   implicit class ListForeachOps[A: Type](private val expr: Expr[List[A]]) {
     def foreach[B: Type](f: Expr[A => B]): Expr[Unit] = ShowExpr.listForeach[A, B](expr, f)
+    def isEmpty: Expr[Boolean] = ShowExpr.listIsEmpty[A](expr)
   }
   implicit class VectorForeachOps[A: Type](private val expr: Expr[Vector[A]]) {
     def foreach[B: Type](f: Expr[A => B]): Expr[Unit] = ShowExpr.vectorForeach[A, B](expr, f)
+    def isEmpty: Expr[Boolean] = ShowExpr.vectorIsEmpty[A](expr)
   }
   implicit class ToStringOps[A: Type](private val expr: Expr[A]) {
     def toStringExpr: Expr[String] = ShowExpr.toString(expr)
+  }
+  implicit class VoidOps[A: Type](private val expr: Expr[A]) {
+    def void: Expr[Unit] = ShowExpr.void(expr)
   }
 
   // As the last stop before the actual implementation:
@@ -242,19 +259,24 @@ trait Derivation extends Definitions {
         ruleSucceeded(sb.append(Expr.String("()")))
       case Type.Array(inner) =>
         import inner.Underlying as Inner
-        handleCollection[Inner](value[A].upcastToExprOf[Array[Inner]].foreach(_))
+        val coll = value[A].upcastToExprOf[Array[Inner]]
+        handleCollection[Inner]("Array", coll.isEmpty, coll.foreach(_))
       case ShowType.List(inner) =>
         import inner.Underlying as Inner
-        handleCollection[Inner](value[A].upcastToExprOf[List[Inner]].foreach(_))
+        val coll = value[A].upcastToExprOf[List[Inner]]
+        handleCollection[Inner]("List", coll.isEmpty, coll.foreach(_))
       case ShowType.Vector(inner) =>
         import inner.Underlying as Inner
-        handleCollection[Inner](value[A].upcastToExprOf[Vector[Inner]].foreach(_))
+        val coll = value[A].upcastToExprOf[Vector[Inner]]
+        handleCollection[Inner]("Vector", coll.isEmpty, coll.foreach(_))
       case _ => ruleNotMatched
     }
 
     private def handleCollection[Inner: Type](
-        foreach: Expr[Inner => StringBuilder] => Expr[Unit]
-    )(implicit ctx: ShowingContext[_]): Option[FinalResult] = {
+        name: String,
+        isEmpty: Expr[Boolean],
+        foreach: Expr[Inner => Unit] => Expr[Unit]
+    )(implicit ctx: ShowingContext[?]): Option[FinalResult] =
       // We'll need a lambda to pass it into .foreach.
       // But we're getting Either[List[DerivationError], Expr[StringBuilder]] instead of Expr[StringBuilder], so simple:
       //   '{ arg => ${ deriveShowing(nestedCtx[Inner]('arg)) } }
@@ -267,20 +289,42 @@ trait Derivation extends Definitions {
         }
         .sequence // turns ExprPromise[Inner, DerivationResult[...]] into DerivationResult[ExprPromise[Inner, ...]]
         .map { promise =>
-          // TODO: append name
-          // TODO: then (
-          // TODO: then all that crap
-          // TODO: then )
-
           // Creates:
-          // {
-          //   arr.foreach { a => ... }
-          //   sb
+          //   if (coll.isEmpty) {
+          //     sb.append("name").append("()")
+          //   } else {
+          //     sb.append("name").append("(\n")
+          //     coll.foreach { value =>
+          //       repeatAppend(sb, indent, nesting + 1)
+          //        expandedShowPretty.append(",\n")
+          //       ()
+          //     }
+          //     repeatAppend(sb, indent, nesting + 1).append(")")
+          //   }
           // }
-          Expr.block(List(foreach(promise.fulfilAsLambda)), sb)
+          Expr.ifElse[StringBuilder](isEmpty) {
+            sb.append(Expr.String(name)).append(Expr.String("()"))
+          } {
+            Expr.block(
+              List(
+                sb.append(Expr.String(name)).append(Expr.String("(\n")).void,
+                foreach(promise.map { expandedShowPretty =>
+                  Expr.block(
+                    List(
+                      sb.repeatAppend(indent, nesting.inc).void,
+                      expandedShowPretty.append(Expr.String(",\n")).void
+                    ),
+                    Expr.Unit
+                  )
+                }.fulfilAsLambda),
+                sb.deleteCharAt(sb.length.lastButOne)
+                  .void // removes last ',' (last-but-1 char, where length-1 is last char)
+              ),
+              sb.repeatAppend(indent, nesting).append(Expr.String(")"))
+            )
+          }
         }
         .pipe(Option(_))
-      }
   }
 
   object ProductRule extends DerivationRule {
@@ -290,7 +334,25 @@ trait Derivation extends Definitions {
 
   object SumTypeRule extends DerivationRule {
 
-    def attempt[A: ShowingContext]: Option[FinalResult] = ruleNotMatched // TODO
+    def attempt[A: ShowingContext]: Option[FinalResult] = Type[A] match {
+      case SealedHierarchy(subtypes) =>
+        type ElementOfA[B] = Enum.Element[A, B]
+        val elements: List[Existential.UpperBounded[A, ElementOfA]] = subtypes.elements
+        elements.traverse[DerivationResult, PatternMatchCase[StringBuilder]] {
+            (subtype: Existential.UpperBounded[A, ElementOfA]) =>
+              import subtype.Underlying as Subtype
+              // Here ExprPromise is used for creating: case subtypeExpr: Subtype => expandedShowPretty
+              ExprPromise
+                .promise[Subtype](ExprPromise.NameGenerationStrategy.FromType)
+                .traverse { subtypeExpr =>
+                  deriveShowing(nestedCtx[Subtype](subtypeExpr))
+                }
+                .map(_.fulfillAsPatternMatchCase)
+          }
+          .map(matchCases => matchCases.matchOn(value[A])) // Creates: expr match { ... list of cases defined above }
+          .pipe(Option(_))
+      case _ => ruleNotMatched
+    }
   }
 
   val rules = List(ImplicitRule, BuildInRule, ProductRule, SumTypeRule)
@@ -314,19 +376,22 @@ trait Derivation extends Definitions {
       Left(List(DerivationError.TypeNotSupported(Type.prettyPrint[A])))
     }
 
-  def deriveShowingExpression[A: ShowingContext]: Expr[StringBuilder] =
-    deriveShowing[A].tap { _ =>
-      if (XMacroSettings.contains("fastshowpretty.logging=true")) {
-        reportInfo(s"Logs:\n${implicitly[ShowingContext[A]].log.mkString("\n")}")
-      }
-    } match {
-      case Left(errors) =>
-        val humanReadableErrors = errors
-          .map { case DerivationError.TypeNotSupported(typeName) =>
-            s"No build-in support nor implicit for type $typeName"
-          }
-          .mkString("\n")
-        reportError(s"Failed to derive showing for ${value.prettyPrint} : ${Type.prettyPrint[A]}:$humanReadableErrors")
-      case Right(value) => value
+  def deriveShowingExpression[A: ShowingContext]: Expr[StringBuilder] = deriveShowing[A].tap { _ =>
+    // Show the log in the compilation output/IDE/Scastie if -Xmacro-settings:fastshowpretty.logging=true was passed
+    if (XMacroSettings.contains("fastshowpretty.logging=true")) {
+      reportInfo(s"Logs:\n${implicitly[ShowingContext[A]].log.mkString("\n")}")
     }
+  } match {
+    case Left(errors) =>
+      // Adjust error ADT for the reader
+      val humanReadableErrors = errors
+        .map { case DerivationError.TypeNotSupported(typeName) =>
+          s"No build-in support nor implicit for type $typeName"
+        }
+        .mkString("\n")
+      reportError(
+        s"Failed to derive showing for ${value.prettyPrint} : ${Type.prettyPrint[A]}:\n$humanReadableErrors"
+      )
+    case Right(value) => value
+  }
 }

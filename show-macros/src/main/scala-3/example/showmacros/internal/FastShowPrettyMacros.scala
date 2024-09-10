@@ -2,11 +2,12 @@ package example.showmacros.internal
 
 import example.showmacros.FastShowPretty
 import io.scalaland.chimney.internal.compiletime.DefinitionsPlatform
+import io.scalaland.chimney.internal.compiletime.datatypes.SealedHierarchiesPlatform
 
 import scala.quoted
 import scala.quoted.*
 
-class FastShowPrettyMacros(val q: Quotes) extends DefinitionsPlatform(using q), Derivation {
+class FastShowPrettyMacros(val q: Quotes) extends DefinitionsPlatform(using q), SealedHierarchiesPlatform, Derivation {
 
   // Here we have to implement the platform-specific part...
 
@@ -54,7 +55,6 @@ class FastShowPrettyMacros(val q: Quotes) extends DefinitionsPlatform(using q), 
 
       def append(sb: Expr[StringBuilder], value: Expr[String]): Expr[StringBuilder] =
         '{ ${ sb }.append(${ value }) }
-
       def repeatAppend(sb: Expr[StringBuilder], value: Expr[String], times: Expr[Int]): Expr[StringBuilder] =
         '{
           var i = 0
@@ -65,16 +65,30 @@ class FastShowPrettyMacros(val q: Quotes) extends DefinitionsPlatform(using q), 
           }
           ${ sb }
         }
+      def deleteCharAt(sb: Expr[StringBuilder], index: Expr[Int]): Expr[StringBuilder] =
+        '{ ${ sb }.deleteCharAt(${ index }) }
+      def length(sb: Expr[StringBuilder]): Expr[Int] =
+        '{ ${ sb }.length }
     }
 
     def incInt(int: Expr[Int]): Expr[Int] = '{ ${ int } + 1 }
+    def lastButOne(int: Expr[Int]): Expr[Int] = '{ ${ int } - 2 }
+
     def arrayForeach[A: Type, B: Type](expr: Expr[Array[A]], f: Expr[A => B]): Expr[Unit] =
       '{ ${ expr }.foreach(${ f }) }
+    def arrayIsEmpty[A: Type](expr: Expr[Array[A]]): Expr[Boolean] =
+      '{ ${ expr }.isEmpty }
     def listForeach[A: Type, B: Type](expr: Expr[List[A]], f: Expr[A => B]): Expr[Unit] =
       '{ ${ expr }.foreach(${ f }) }
+    def listIsEmpty[A: Type](expr: Expr[List[A]]): Expr[Boolean] =
+      '{ ${ expr }.isEmpty }
     def vectorForeach[A: Type, B: Type](expr: Expr[Vector[A]], f: Expr[A => B]): Expr[Unit] =
       '{ ${ expr }.foreach(${ f }) }
+    def vectorIsEmpty[A: Type](expr: Expr[Vector[A]]): Expr[Boolean] =
+      '{ ${ expr }.isEmpty }
+
     def toString[A: Type](expr: Expr[A]): Expr[String] = '{ ${ expr }.toString }
+    def void[A: Type](expr: Expr[A]): Expr[Unit] = '{ ${ expr }; () }
   }
 
   // ...so that here we could use platform-agnostic code to do the heavy lifting :)
