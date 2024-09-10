@@ -15,7 +15,7 @@ class FastShowPrettyMacros(val q: Quotes)
 
   // Here we have to implement the platform-specific part...
 
-  import q.*, q.reflect.*
+  import quotes.*, quotes.reflect.*
 
   object ShowType extends ShowTypeModule {
 
@@ -60,23 +60,37 @@ class FastShowPrettyMacros(val q: Quotes)
       def append(sb: Expr[StringBuilder], value: Expr[String]): Expr[StringBuilder] =
         '{ ${ sb }.append(${ value }) }
       def repeatAppend(sb: Expr[StringBuilder], value: Expr[String], times: Expr[Int]): Expr[StringBuilder] =
-        '{
-          var i = 0
-          val j = ${ times }
-          while i < j do {
-            ${ sb }.append(${ value })
-            i += 1
-          }
-          ${ sb }
-        }
-      def deleteCharAt(sb: Expr[StringBuilder], index: Expr[Int]): Expr[StringBuilder] =
-        '{ ${ sb }.deleteCharAt(${ index }) }
-      def length(sb: Expr[StringBuilder]): Expr[Int] =
-        '{ ${ sb }.length }
+        '{ Runtime.repeatAppend($sb, ${ value }, ${ times }) }
+
+      def appendCaseClassStart(
+          sb: Expr[StringBuilder],
+          className: Expr[String]
+      ): Expr[Unit] =
+        '{ Runtime.appendCaseClassStart(${ sb }, ${ className }) }
+      def appendCaseClassEnd(
+          sb: Expr[StringBuilder],
+          indent: Expr[String],
+          nesting: Expr[Int]
+      ): Expr[Unit] =
+        '{ Runtime.appendCaseClassEnd(${ sb }, ${ indent }, ${ nesting }) }
+
+      def appendFieldStart(
+          sb: Expr[StringBuilder],
+          fieldName: Expr[String],
+          indent: Expr[String],
+          nesting: Expr[Int]
+      ): Expr[Unit] =
+        '{ Runtime.appendFieldStart(${ sb }, ${ fieldName }, ${ indent }, ${ nesting }) }
+      def appendFieldEnd(
+          sb: Expr[StringBuilder]
+      ): Expr[Unit] =
+        '{ Runtime.appendFieldEnd(${ sb }) }
+
+      def appendCaseObject(sb: Expr[StringBuilder], className: Expr[String]): Expr[Unit] =
+        '{ Runtime.appendCaseObject(${ sb }, ${ className }) }
     }
 
     def incInt(int: Expr[Int]): Expr[Int] = '{ ${ int } + 1 }
-    def lastButOne(int: Expr[Int]): Expr[Int] = '{ ${ int } - 2 }
 
     def arrayForeach[A: Type, B: Type](expr: Expr[Array[A]], f: Expr[A => B]): Expr[Unit] =
       '{ ${ expr }.foreach(${ f }) }

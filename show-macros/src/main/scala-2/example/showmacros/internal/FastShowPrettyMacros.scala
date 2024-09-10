@@ -53,25 +53,40 @@ class FastShowPrettyMacros(val c: blackbox.Context)
       def append(sb: Expr[StringBuilder], value: Expr[String]): Expr[StringBuilder] =
         c.Expr[StringBuilder](q"$sb.append($value)")
       def repeatAppend(sb: Expr[StringBuilder], value: Expr[String], times: Expr[Int]): Expr[StringBuilder] =
-        c.Expr[StringBuilder](
-          q"""
-          var i = 0
-          val j = $times 
-          while (i < j) {
-            $sb.append($value)
-            i += 1
-          }
-          $sb
-          """
+        c.Expr[StringBuilder](q"_root_.example.showmacros.internal.Runtime.repeatAppend($sb, $value, $times)")
+
+      def appendCaseClassStart(
+          sb: Expr[StringBuilder],
+          className: Expr[String]
+      ): Expr[Unit] =
+        c.Expr[Unit](q"_root_.example.showmacros.internal.Runtime.appendCaseClassStart($sb, $className)")
+      def appendCaseClassEnd(
+          sb: Expr[StringBuilder],
+          indent: Expr[String],
+          nesting: Expr[Int]
+      ): Expr[Unit] =
+        c.Expr[Unit](q"_root_.example.showmacros.internal.Runtime.appendCaseClassEnd($sb, $indent, $nesting)")
+      def appendFieldStart(
+          sb: Expr[StringBuilder],
+          fieldName: Expr[String],
+          indent: Expr[String],
+          nesting: Expr[Int]
+      ): Expr[Unit] =
+        c.Expr[Unit](
+          q"_root_.example.showmacros.internal.Runtime.appendFieldStart($sb, $fieldName, $indent, $nesting)"
         )
-      def deleteCharAt(sb: Expr[StringBuilder], index: Expr[Int]): Expr[StringBuilder] =
-        c.Expr[StringBuilder](q"$sb.deleteCharAt($index)")
-      def length(sb: Expr[StringBuilder]): Expr[Int] =
-        c.Expr[Int](q"$sb.length")
+      def appendFieldEnd(
+          sb: Expr[StringBuilder]
+      ): Expr[Unit] =
+        c.Expr[Unit](
+          q"_root_.example.showmacros.internal.Runtime.appendFieldEnd($sb)"
+        )
+
+      def appendCaseObject(sb: Expr[StringBuilder], className: Expr[String]): Expr[Unit] =
+        c.Expr[Unit](q"_root_.example.showmacros.internal.Runtime.appendCaseObject($sb, $className)")
     }
 
     def incInt(int: Expr[Int]): Expr[Int] = c.Expr(q"$int + 1")
-    def lastButOne(int: Expr[Int]): Expr[Int] = c.Expr(q"$int - 2")
 
     def arrayForeach[A: Type, B: Type](expr: Expr[Array[A]], f: Expr[A => B]): Expr[Unit] =
       c.Expr[Unit](q"$expr.foreach($f)")
@@ -87,7 +102,7 @@ class FastShowPrettyMacros(val c: blackbox.Context)
       c.Expr[Boolean](q"$expr.isEmpty")
 
     def toString[A: Type](expr: Expr[A]): Expr[String] = c.Expr[String](q"$expr.toString")
-    def void[A: Type](expr: Expr[A]): Expr[Unit] = c.Expr[Unit](q"$expr; ()")
+    def void[A: Type](expr: Expr[A]): Expr[Unit] = c.Expr[Unit](q"$expr")
   }
 
   // ...so that here we could use platform-agnostic code to do the heavy lifting :)

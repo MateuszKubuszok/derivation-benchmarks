@@ -58,6 +58,8 @@ lazy val root = project
   .aggregate(showMagnolia.projectRefs *)
   .aggregate(showMagnoliaAuto.projectRefs *)
   .aggregate(showMagnoliaSemi.projectRefs *)
+  .aggregate(showMacros.projectRefs *)
+  .aggregate(showSanely.projectRefs *)
   .aggregate(circeGenericAuto.projectRefs *)
   .aggregate(circeGenericSemi.projectRefs *)
   .aggregate(circeMagnolia.projectRefs *)
@@ -153,6 +155,12 @@ lazy val showMacros = projectMatrix
   .settings(
     libraryDependencies += "io.scalaland" %% "chimney-macro-commons" % "1.4.0"
   )
+
+lazy val showSanely = projectMatrix
+  .in(file("show-sanely"))
+  .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE *)
+  .settings(commonSettings *)
+  .dependsOn(testClasses, showMacros)
 
 // Circe-related experiments
 
@@ -260,6 +268,7 @@ lazy val benchmarks = projectMatrix
     showGenericProgrammingSemi,
     showMagnoliaAuto,
     showMagnoliaSemi,
+    showSanely,
     circeGenericAuto,
     circeGenericSemi,
     circeMagnoliaAuto,
