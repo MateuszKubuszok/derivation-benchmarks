@@ -2,12 +2,13 @@ package example.showmacros.internal
 
 import example.showmacros.FastShowPretty
 import io.scalaland.chimney.internal.compiletime.DefinitionsPlatform
-import io.scalaland.chimney.internal.compiletime.datatypes.SealedHierarchiesPlatform
+import io.scalaland.chimney.internal.compiletime.datatypes.{ProductTypesPlatform, SealedHierarchiesPlatform}
 
 import scala.reflect.macros.blackbox
 
 class FastShowPrettyMacros(val c: blackbox.Context)
     extends DefinitionsPlatform
+    with ProductTypesPlatform
     with SealedHierarchiesPlatform
     with Derivation {
 

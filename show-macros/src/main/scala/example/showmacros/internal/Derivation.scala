@@ -2,14 +2,14 @@ package example.showmacros.internal
 
 import example.showmacros.FastShowPretty
 import io.scalaland.chimney.internal.compiletime.Definitions
-import io.scalaland.chimney.internal.compiletime.datatypes.SealedHierarchies
+import io.scalaland.chimney.internal.compiletime.datatypes.{ProductTypes, SealedHierarchies}
 import io.scalaland.chimney.internal.compiletime.fp.{Applicative, Parallel, Traverse}
 import io.scalaland.chimney.internal.compiletime.fp.Implicits.*
 
 import scala.collection.mutable
 import scala.util.chaining.*
 
-trait Derivation extends Definitions with SealedHierarchies {
+trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
 
   // Here we are using utilities from chimney-macro-commons instead of Scala 2/Scala 3 macros directly.
   // We'll use "Show" prefix because we are working on Show library, and we don't want to mix these definitions
@@ -317,8 +317,8 @@ trait Derivation extends Definitions with SealedHierarchies {
                     Expr.Unit
                   )
                 }.fulfilAsLambda),
-                sb.deleteCharAt(sb.length.lastButOne)
-                  .void // removes last ',' (last-but-1 char, where length-1 is last char)
+                // removes last ',' (last-but-1 char, where length-1 is last char)
+                sb.deleteCharAt(sb.length.lastButOne).void
               ),
               sb.repeatAppend(indent, nesting).append(Expr.String(")"))
             )
@@ -329,16 +329,73 @@ trait Derivation extends Definitions with SealedHierarchies {
 
   object ProductRule extends DerivationRule {
 
-    def attempt[A: ShowingContext]: Option[FinalResult] = ruleNotMatched // TODO
+    def attempt[A: ShowingContext]: Option[FinalResult] = Type[A] match {
+      // Uses utilities from ProductTypes mixin.
+      case ProductType(Product(Product.Extraction(extraction), Product.Constructor(parameters, _))) =>
+        if (Type[A].isCaseClass || Type[A].isCaseObject) {
+          extraction.toList
+            .collect{
+              case (fieldName, getter)
+                  if parameters
+                    .get(fieldName)
+                    .exists(_.value.targetType == Product.Parameter.TargetType.ConstructorParameter) =>
+                import getter.Underlying as FieldType
+                deriveShowing(nestedCtx[FieldType](getter.value.get(value[A]))).map { expandedShowPretty =>
+                  // repeatAppend(indent, nesting + 1).append(fieldName).append(" = ")
+                  // expandedShowPretty.append(",\n")
+                  Expr.block(
+                    List(
+                      sb
+                        .repeatAppend(indent, nesting.inc)
+                        .append(Expr.String(fieldName))
+                        .append(Expr.String(" = "))
+                        .void
+                    ),
+                    expandedShowPretty.append(Expr.String(",\n")).void
+                  )
+                }
+            }
+            .sequence
+            .map { expandedShowPrettyForFields =>
+              val className = ""
+              if (expandedShowPrettyForFields.isEmpty) {
+                // sb.append(className)
+                sb.append(Expr.String(className))
+              } else {
+                // sb.append(className).append("(\n")
+                // expandedShowPrettyForFields
+                // // removes last ',' (last-but-1 char, where length-1 is last char)
+                // sb.deleteCharAt(sb.length - 2)
+                // repeatAppend(indent, nesting).append(")")
+                Expr.block(
+                  List(
+                    sb.append(Expr.String(className)).append(Expr.String("(\n")).void
+                  ) ++ expandedShowPrettyForFields ++ List(
+                    sb.deleteCharAt(sb.length.lastButOne).void
+                  ),
+                  sb.repeatAppend(indent, nesting).append(Expr.String(")"))
+                )
+              }
+            }
+            .pipe(Option(_))
+        } else {
+          log(s"We could access ${Type.prettyPrint[A]} fields and constructor, but it's not a case class")
+          ruleNotMatched
+        }
+      case _ => ruleNotMatched
+    }
   }
 
   object SumTypeRule extends DerivationRule {
 
     def attempt[A: ShowingContext]: Option[FinalResult] = Type[A] match {
+      // Uses utilities from SealedHierarchies mixin.
       case SealedHierarchy(subtypes) =>
+        // Type hints for a silly compiler
         type ElementOfA[B] = Enum.Element[A, B]
         val elements: List[Existential.UpperBounded[A, ElementOfA]] = subtypes.elements
-        elements.traverse[DerivationResult, PatternMatchCase[StringBuilder]] {
+        elements
+          .traverse[DerivationResult, PatternMatchCase[StringBuilder]] {
             (subtype: Existential.UpperBounded[A, ElementOfA]) =>
               import subtype.Underlying as Subtype
               // Here ExprPromise is used for creating: case subtypeExpr: Subtype => expandedShowPretty
@@ -357,6 +414,7 @@ trait Derivation extends Definitions with SealedHierarchies {
 
   val rules = List(ImplicitRule, BuildInRule, ProductRule, SumTypeRule)
 
+  // Intended for recursive use: when going for a field in a case class/a subtype in sealed, we'll call it.
   def deriveShowing[A: ShowingContext]: FinalResult = rules
     .foldLeft {
       log(s"Started derivation for ${value.prettyPrint} : ${Type.prettyPrint[A]}")
@@ -376,6 +434,7 @@ trait Derivation extends Definitions with SealedHierarchies {
       Left(List(DerivationError.TypeNotSupported(Type.prettyPrint[A])))
     }
 
+  // Intended for top-level call as it reads the configs and prepares possible diagnostics/error message.
   def deriveShowingExpression[A: ShowingContext]: Expr[StringBuilder] = deriveShowing[A].tap { _ =>
     // Show the log in the compilation output/IDE/Scastie if -Xmacro-settings:fastshowpretty.logging=true was passed
     if (XMacroSettings.contains("fastshowpretty.logging=true")) {

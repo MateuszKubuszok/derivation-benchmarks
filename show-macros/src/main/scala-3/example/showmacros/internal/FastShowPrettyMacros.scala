@@ -2,12 +2,16 @@ package example.showmacros.internal
 
 import example.showmacros.FastShowPretty
 import io.scalaland.chimney.internal.compiletime.DefinitionsPlatform
-import io.scalaland.chimney.internal.compiletime.datatypes.SealedHierarchiesPlatform
+import io.scalaland.chimney.internal.compiletime.datatypes.{ProductTypesPlatform, SealedHierarchiesPlatform}
 
 import scala.quoted
 import scala.quoted.*
 
-class FastShowPrettyMacros(val q: Quotes) extends DefinitionsPlatform(using q), SealedHierarchiesPlatform, Derivation {
+class FastShowPrettyMacros(val q: Quotes)
+    extends DefinitionsPlatform(using q),
+      ProductTypesPlatform,
+      SealedHierarchiesPlatform,
+      Derivation {
 
   // Here we have to implement the platform-specific part...
 
