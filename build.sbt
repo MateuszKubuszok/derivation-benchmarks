@@ -35,13 +35,16 @@ val commonSettings = Seq(
   ),
   libraryDependencies ++= {
     CrossVersion.partialVersion(scalaVersion.value) match {
-      case Some((2, _)) => Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value % Provided)
+      case Some((2, _)) => Seq(
+        "org.scala-lang" % "scala-reflect" % scalaVersion.value % Provided,
+        compilerPlugin("org.typelevel" % "kind-projector" % "0.13.3" cross CrossVersion.full)
+      )
       case _            => Seq.empty
     }
   },
   scalacOptions ++= {
     CrossVersion.partialVersion(scalaVersion.value) match {
-      case Some((3, _)) => Seq("-no-indent")
+      case Some((3, _)) => Seq("-no-indent", "-Ykind-projector:underscores")
       case _            => Seq("-Xsource:3")
     }
   }

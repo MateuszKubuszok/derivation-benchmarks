@@ -13,7 +13,7 @@ class FastShowPrettyMacros(val q: Quotes)
       SealedHierarchiesPlatform,
       Derivation {
 
-  // Here we have to implement the platform-specific part...
+  // Here we have to implement the platform-specific part
 
   import quotes.*, quotes.reflect.*
 
@@ -108,8 +108,6 @@ class FastShowPrettyMacros(val q: Quotes)
     def toString[A: Type](expr: Expr[A]): Expr[String] = '{ ${ expr }.toString }
     def void[A: Type](expr: Expr[A]): Expr[Unit] = '{ ${ expr }; () }
   }
-
-  // ...so that here we could use platform-agnostic code to do the heavy lifting :)
 
   def deriveFastShowPretty[A: Type]: Expr[FastShowPretty[A]] = '{
     new FastShowPretty[A] {

@@ -194,20 +194,23 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
   // etc
 
   case class ShowingContext[A](
+      // Input data required for rendering the currently handled value/type
       shown: Type[A],
       value: Expr[A],
       sb: Expr[StringBuilder],
       indent: Expr[String],
       nesting: Expr[Int],
+      // Metadata/configs
       avoidImplicit: Boolean,
       recurNesting: Int,
+      // Logging
       log: mutable.ListBuffer[String]
   ) {
 
-    def nest[B: Type](value: Expr[B]): ShowingContext[B] = copy[B](
+    def nest[B: Type](value: Expr[B], nesting: Expr[Int]): ShowingContext[B] = copy[B](
       shown = Type[B],
       value = value,
-      nesting = nesting.inc,
+      nesting = nesting,
       avoidImplicit = false,
       recurNesting = recurNesting + 1
     )
@@ -231,7 +234,9 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
     )
   }
 
+  // Makes Type[A] available when ShowingContext[A] is available
   implicit def showType[A](implicit ctx: ShowingContext[A]): Type[A] = ctx.shown
+  // Allow obtaining these utilities as if they were stored in globals
   def value[A](implicit ctx: ShowingContext[A]): Expr[A] = ctx.value
   def sb(implicit ctx: ShowingContext[?]): Expr[StringBuilder] = ctx.sb
   def indent(implicit ctx: ShowingContext[?]): Expr[String] = ctx.indent
@@ -242,7 +247,8 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
     ctx.log.addOne(("  " * ctx.recurNesting) + " - " + msg)
   }
   def recurNesting(implicit ctx: ShowingContext[?]): Int = ctx.recurNesting
-  def nestedCtx[B: Type](value: Expr[B])(implicit ctx: ShowingContext[?]): ShowingContext[B] = ctx.nest(value)
+  def nestedCtx[B: Type](value: Expr[B], nesting: Expr[Int])(implicit ctx: ShowingContext[?]): ShowingContext[B] =
+    ctx.nest(value, nesting)
 
   sealed trait DerivationError
   object DerivationError {
@@ -256,10 +262,12 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
     def pure[A](a: A): DerivationResult[A] = Right(a)
   }
 
+  // Provides slightly better description of the intent than nested Options and Eithers
   type FinalResult = DerivationResult[Expr[Unit]]
+  def derivationFailed(error: DerivationError*): FinalResult = Left(List(error*))
   def ruleNotMatched: Option[FinalResult] = None
+  def ruleMatched(fr: FinalResult): Option[FinalResult] = Some(fr)
   def ruleSucceeded(sb: Expr[Unit]): Option[FinalResult] = Some(Right(sb))
-  def ruleFailed(error: DerivationError*): Option[FinalResult] = Some(Left(List(error*)))
 
   trait DerivationRule {
 
@@ -280,60 +288,78 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
         ruleNotMatched
       } else
         (Expr.summonImplicit[FastShowPretty[A]] match {
-          case Some(instance) => ruleSucceeded(instance.showPretty(value[A], sb, indent, nesting).void)
+          case Some(instance) => ruleSucceeded(handleInstance(instance))
           case None           => ruleNotMatched
         })
+
+    private def handleInstance[A: ShowingContext](instance: Expr[FastShowPretty[A]]): Expr[Unit] =
+      instance.showPretty(value[A], sb, indent, nesting).void
   }
 
   case object BuildInRule extends DerivationRule {
 
     def attempt[A: ShowingContext]: Option[FinalResult] = Type[A] match {
-      case tpe if tpe =:= Type[String] =>
-        ruleSucceeded(
-          sb.append(Expr.String("\"")).append(value[A].upcastToExprOf[String]).append(Expr.String("\"")).void
-        )
-      case tpe if tpe =:= Type[Char] =>
-        ruleSucceeded(sb.append(Expr.String("'")).append(value[A].toStringExpr).append(Expr.String("'")).void)
-      case tpe if tpe =:= Type[Boolean] =>
-        ruleSucceeded(sb.append(value[A].toStringExpr).void)
-      case tpe if tpe =:= Type[Byte] =>
-        ruleSucceeded(sb.append(value[A].toStringExpr).append(Expr.String(".toByte")).void)
-      case tpe if tpe =:= Type[Short] =>
-        ruleSucceeded(sb.append(value[A].toStringExpr).append(Expr.String(".toShort")).void)
-      case tpe if tpe =:= Type[Int] =>
-        ruleSucceeded(sb.append(value[A].toStringExpr).void)
-      case tpe if tpe =:= Type[Long] =>
-        ruleSucceeded(sb.append(value[A].toStringExpr).append(Expr.String("L")).void)
-      case tpe if tpe =:= Type[Float] =>
-        ruleSucceeded(sb.append(value[A].toStringExpr).void)
-      case tpe if tpe =:= Type[Double] =>
-        ruleSucceeded(sb.append(value[A].toStringExpr).append(Expr.String("f")).void)
-      case tpe if tpe =:= Type[BigInt] =>
-        ruleSucceeded(sb.append(value[A].toStringExpr).void)
-      case tpe if tpe =:= Type[BigDecimal] =>
-        ruleSucceeded(sb.append(value[A].toStringExpr).void)
-      case tpe if tpe =:= Type[Unit] =>
-        ruleSucceeded(sb.append(Expr.String("()")).void)
+      case tpe if tpe =:= Type[String]     => ruleSucceeded(handleString[A])
+      case tpe if tpe =:= Type[Char]       => ruleSucceeded(handleChar[A])
+      case tpe if tpe =:= Type[Boolean]    => ruleSucceeded(handleBoolean[A])
+      case tpe if tpe =:= Type[Byte]       => ruleSucceeded(handleByte[A])
+      case tpe if tpe =:= Type[Short]      => ruleSucceeded(handleShort[A])
+      case tpe if tpe =:= Type[Int]        => ruleSucceeded(handleInt[A])
+      case tpe if tpe =:= Type[Long]       => ruleSucceeded(handleLong[A])
+      case tpe if tpe =:= Type[Float]      => ruleSucceeded(handleFloat[A])
+      case tpe if tpe =:= Type[Double]     => ruleSucceeded(handleDouble[A])
+      case tpe if tpe =:= Type[BigInt]     => ruleSucceeded(handleBigInt[A])
+      case tpe if tpe =:= Type[BigDecimal] => ruleSucceeded(handleBigDecimal)
+      case tpe if tpe =:= Type[Unit]       => ruleSucceeded(handleUnit[A])
       case Type.Array(inner) =>
         import inner.Underlying as Inner
         val coll = value[A].upcastToExprOf[Array[Inner]]
-        handleCollection[Inner]("Array", coll.isEmpty, coll.foreach(_))
+        ruleMatched(handleCollectionOrFail[Inner]("Array", coll.isEmpty, coll.foreach(_)))
       case ShowType.List(inner) =>
         import inner.Underlying as Inner
         val coll = value[A].upcastToExprOf[List[Inner]]
-        handleCollection[Inner]("List", coll.isEmpty, coll.foreach(_))
+        ruleMatched(handleCollectionOrFail[Inner]("List", coll.isEmpty, coll.foreach(_)))
       case ShowType.Vector(inner) =>
         import inner.Underlying as Inner
         val coll = value[A].upcastToExprOf[Vector[Inner]]
-        handleCollection[Inner]("Vector", coll.isEmpty, coll.foreach(_))
+        ruleMatched(handleCollectionOrFail[Inner]("Vector", coll.isEmpty, coll.foreach(_)))
       case _ => ruleNotMatched
     }
 
-    private def handleCollection[Inner: Type](
+    private def handleString[A: ShowingContext]: Expr[Unit] =
+      sb.append(Expr.String("\"")).append(value[A].upcastToExprOf[String]).append(Expr.String("\"")).void
+    private def handleChar[A: ShowingContext]: Expr[Unit] =
+      sb.append(Expr.String("'")).append(value[A].toStringExpr).append(Expr.String("'")).void
+
+    private def handleBoolean[A: ShowingContext]: Expr[Unit] =
+      sb.append(value[A].toStringExpr).void
+    private def handleByte[A: ShowingContext]: Expr[Unit] =
+      sb.append(value[A].toStringExpr).append(Expr.String(".toByte")).void
+
+    private def handleShort[A: ShowingContext]: Expr[Unit] =
+      sb.append(value[A].toStringExpr).append(Expr.String(".toShort")).void
+    private def handleInt[A: ShowingContext]: Expr[Unit] =
+      sb.append(value[A].toStringExpr).void
+    private def handleLong[A: ShowingContext]: Expr[Unit] =
+      sb.append(value[A].toStringExpr).append(Expr.String("L")).void
+    private def handleFloat[A: ShowingContext]: Expr[Unit] =
+      sb.append(value[A].toStringExpr).append(Expr.String("f")).void
+    private def handleDouble[A: ShowingContext]: Expr[Unit] =
+      sb.append(value[A].toStringExpr).void
+
+    private def handleBigInt[A: ShowingContext]: Expr[Unit] =
+      sb.append(value[A].toStringExpr).void
+    private def handleBigDecimal[A: ShowingContext]: Expr[Unit] =
+      sb.append(value[A].toStringExpr).void
+
+    private def handleUnit[A: ShowingContext]: Expr[Unit] =
+      sb.append(Expr.String("()")).void
+
+    private def handleCollectionOrFail[Inner: Type](
         className: String,
         isEmpty: Expr[Boolean],
         foreach: Expr[Inner => Unit] => Expr[Unit]
-    )(implicit ctx: ShowingContext[?]): Option[FinalResult] =
+    )(implicit ctx: ShowingContext[?]): FinalResult =
       // We'll need a lambda to pass it into .foreach.
       // But we're getting Either[List[DerivationError], Expr[StringBuilder]] instead of Expr[StringBuilder], so simple:
       //   '{ arg => ${ recur('arg) } }
@@ -363,7 +389,6 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
             )
           }
         }
-        .pipe(Option(_))
   }
 
   case object ProductRule extends DerivationRule {
@@ -372,51 +397,7 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
       // Uses utilities from ProductTypes mixin.
       case ProductType(Product(Product.Extraction(extraction), Product.Constructor(parameters, _))) =>
         if (Type[A].isCaseClass || Type[A].isCaseObject) {
-          // Type hints for a silly compiler
-          val caseClassArgs: List[(String, ExistentialType)] = parameters.toList.collect {
-            case (fieldName: String, param: Existential[Product.Parameter])
-                if param.value.targetType == Product.Parameter.TargetType.ConstructorParameter =>
-              fieldName -> param.Underlying.as_??
-          }
-          caseClassArgs
-            .flatMap { case (fieldName: String, param: ExistentialType) =>
-              import param.Underlying as FieldType
-              extraction.collectFirst {
-                case (`fieldName`, someGetter)
-                    if someGetter.value.sourceType == Product.Getter.SourceType.ConstructorVal && someGetter.Underlying =:= FieldType =>
-                  import someGetter.{Underlying as GetterType, value as getter}
-                  val fieldExpr = getter.get(value[A]).upcastToExprOf[FieldType]
-                  recur(fieldExpr).map { expandedShowPretty =>
-                    ShowExpr.unitBlock(
-                      sb.appendFieldStart(Expr.String(fieldName), indent, nesting.inc),
-                      expandedShowPretty,
-                      sb.appendFieldEnd
-                    )
-                  }
-              }.toList
-            }
-            .sequence
-            .map { expandedShowPrettyForFields =>
-              val className = ShowType.simpleName[A]
-              if (expandedShowPrettyForFields.isEmpty) {
-                sb.appendCaseObject(Expr.String(className))
-              } else {
-                val body = ShowExpr.unitBlock(
-                  (List(sb.appendCaseClassStart(Expr.String(className))) ++ expandedShowPrettyForFields ++ List(
-                    sb.appendCaseClassEnd(indent, nesting)
-                  ))*
-                )
-                val shouldCreateBodyAsDef = recurNesting % 2 == 0
-                if (shouldCreateBodyAsDef) {
-                  PrependDefinitionsTo
-                    .prependLazyVal[Unit](body, ExprPromise.NameGenerationStrategy.FromPrefix("body"))
-                    .closeBlockAsExprOf[Unit]
-                } else {
-                  body
-                }
-              }
-            }
-            .pipe(Option(_))
+          ruleMatched(handleCaseClassOrFail(extraction, parameters))
         } else {
           log(s"We could access ${Type.prettyPrint[A]} fields and constructor, but it's not a case class")
           ruleNotMatched
@@ -424,36 +405,88 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
       case _ =>
         ruleNotMatched
     }
+
+    private def handleCaseClassOrFail[A: ShowingContext](
+        extraction: Product.Getters[A],
+        parameters: Product.Parameters
+    ): FinalResult = {
+      // Type hints for a silly compiler
+      val caseClassArgs: List[(String, ExistentialType)] = parameters.toList.collect {
+        case (fieldName: String, param: Existential[Product.Parameter])
+            if param.value.targetType == Product.Parameter.TargetType.ConstructorParameter =>
+          fieldName -> param.Underlying.as_??
+      }
+      caseClassArgs
+        .flatMap { case (fieldName: String, param: ExistentialType) =>
+          import param.Underlying as FieldType
+          extraction.collectFirst {
+            case (`fieldName`, someGetter)
+                if someGetter.value.sourceType == Product.Getter.SourceType.ConstructorVal && someGetter.Underlying =:= FieldType =>
+              import someGetter.{Underlying as GetterType, value as getter}
+              val fieldExpr = getter.get(value[A]).upcastToExprOf[FieldType]
+              recur(fieldExpr).map { expandedShowPretty =>
+                ShowExpr.unitBlock(
+                  sb.appendFieldStart(Expr.String(fieldName), indent, nesting.inc),
+                  expandedShowPretty,
+                  sb.appendFieldEnd
+                )
+              }
+          }.toList
+        }
+        .sequence
+        .map { expandedShowPrettyForFields =>
+          val className = ShowType.simpleName[A]
+          if (expandedShowPrettyForFields.isEmpty) {
+            sb.appendCaseObject(Expr.String(className))
+          } else {
+            val body = ShowExpr.unitBlock(
+              (List(sb.appendCaseClassStart(Expr.String(className))) ++ expandedShowPrettyForFields ++ List(
+                sb.appendCaseClassEnd(indent, nesting)
+              ))*
+            )
+            val shouldCreateBodyAsDef = recurNesting % 2 == 0
+            if (shouldCreateBodyAsDef) {
+              PrependDefinitionsTo
+                .prependLazyVal[Unit](body, ExprPromise.NameGenerationStrategy.FromPrefix("body"))
+                .closeBlockAsExprOf[Unit]
+            } else {
+              body
+            }
+          }
+        }
+    }
   }
 
   case object SumTypeRule extends DerivationRule {
 
     def attempt[A: ShowingContext]: Option[FinalResult] = Type[A] match {
       // Uses utilities from SealedHierarchies mixin.
-      case SealedHierarchy(subtypes) =>
-        // Type hints for a silly compiler
-        type ElementOfA[B] = Enum.Element[A, B]
-        val elements: List[Existential.UpperBounded[A, ElementOfA]] = subtypes.elements
-        elements
-          .traverse[DerivationResult, PatternMatchCase[Unit]] { (subtype: Existential.UpperBounded[A, ElementOfA]) =>
-            import subtype.Underlying as Subtype
-            // Here ExprPromise is used for creating: case subtypeExpr: Subtype => expandedShowPretty
-            ExprPromise
-              .promise[Subtype](ExprPromise.NameGenerationStrategy.FromType)
-              .traverse { subtypeExpr =>
-                recur(subtypeExpr)
-              }
-              .map(_.fulfillAsPatternMatchCase)
-          }
-          .map(matchCases => matchCases.matchOn(value[A])) // Creates: expr match { ... list of cases defined above }
-          .pipe(Option(_))
-      case _ => ruleNotMatched
+      case SealedHierarchy(subtypes) => ruleMatched(handleSealedTraitOrFail(subtypes.elements))
+      case _                         => ruleNotMatched
+    }
+
+    private def handleSealedTraitOrFail[A: ShowingContext](
+        elements: List[Existential.UpperBounded[A, Enum.Element[A, *]]]
+    ): FinalResult = {
+      // Type hints for a silly compiler
+      type ElementOfA[B] = Enum.Element[A, B]
+      elements
+        .traverse[DerivationResult, PatternMatchCase[Unit]] { (subtype: Existential.UpperBounded[A, ElementOfA]) =>
+          import subtype.Underlying as Subtype
+          // Here ExprPromise is used for creating: case subtypeExpr: Subtype => expandedShowPretty
+          ExprPromise
+            .promise[Subtype](ExprPromise.NameGenerationStrategy.FromType)
+            .traverse { subtypeExpr =>
+              recur(subtypeExpr)
+            }
+            .map(_.fulfillAsPatternMatchCase)
+        }
+        .map(matchCases => matchCases.matchOn(value[A])) // Creates: expr match { ... list of cases defined above }
     }
   }
 
   val rules = List(ImplicitRule, BuildInRule, ProductRule, SumTypeRule)
 
-  // Intended for recursive use: when going for a field in a case class/a subtype in sealed, we'll call it.
   def deriveShowing[A: ShowingContext]: FinalResult = rules
     .foldLeft {
       log(s"Started derivation for ${value.prettyPrint} : ${Type.prettyPrint[A]}")
@@ -473,9 +506,10 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
     }
     .getOrElse {
       log(s"Failed to resolve how to show ${value.prettyPrint} : ${Type.prettyPrint[A]}")
-      Left(List(DerivationError.TypeNotSupported(Type.prettyPrint[A])))
+      derivationFailed(DerivationError.TypeNotSupported(Type.prettyPrint[A]))
     }
 
+  // Intended for recursive use: when going for a field in a case class/a subtype in sealed, we'll call it.
   def recur[A: Type](newValue: Expr[A])(implicit showingContext: ShowingContext[?]): FinalResult = {
     val cacheNewNesting =
       PrependDefinitionsTo.prependVal(nesting.inc, ExprPromise.NameGenerationStrategy.FromPrefix("nesting"))
@@ -484,7 +518,7 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
     (cacheNewNesting)
       .map2(cacheNewValue)(_ -> _)
       .traverse { case (cachedNewNesting, cachedNewValue) =>
-        deriveShowing[A](nestedCtx(cachedNewValue).copy(nesting = cachedNewNesting))
+        deriveShowing[A](nestedCtx(cachedNewValue, cachedNewNesting))
       }
       .map(_.closeBlockAsExprOf[Unit])
   }

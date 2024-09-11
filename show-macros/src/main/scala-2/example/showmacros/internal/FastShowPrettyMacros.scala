@@ -12,7 +12,7 @@ class FastShowPrettyMacros(val c: blackbox.Context)
     with SealedHierarchiesPlatform
     with Derivation {
 
-  // Here we have to implement the platform-specific part...
+  // Here we have to implement the platform-specific part
 
   import c.universe.*, Type.platformSpecific.TypeCtorOps
 
@@ -104,8 +104,6 @@ class FastShowPrettyMacros(val c: blackbox.Context)
     def toString[A: Type](expr: Expr[A]): Expr[String] = c.Expr[String](q"$expr.toString")
     def void[A: Type](expr: Expr[A]): Expr[Unit] = c.Expr[Unit](q"$expr")
   }
-
-  // ...so that here we could use platform-agnostic code to do the heavy lifting :)
 
   def deriveFastShowPretty[A: c.WeakTypeTag]: c.Expr[FastShowPretty[A]] = {
     val value = ExprPromise.platformSpecific.freshTermName("value")
