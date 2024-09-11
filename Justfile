@@ -56,13 +56,13 @@ runtimeJSONs:
 
 [doc('Compile each measured Show project with cold JVM (like on CI)')]
 coldJvmCompileShows:
-  sbt -error --no-server \
+  sbt  --no-server \
     testClasses/compile \
     testClasses3/compile \
     showGenericProgramming/compile \
     showGenericProgramming3/compile \
     showMagnolia/compile \
-    showMagnolia2/compile \
+    showMagnolia3/compile \
     showMacros/compile \
     showMacros3/compile \
     update
