@@ -1,6 +1,6 @@
 # Derivation benchmarks
 
-Take a look at [Slow Auto, Inconvenient Semi] presentation(https://github.com/MateuszKubuszok/SlowAutoInconvenientSemi).
+Take a look at [_Slow Auto, Inconvenient Semi_ presentation](https://github.com/MateuszKubuszok/SlowAutoInconvenientSemi).
 
 ## JSON round trip
 
