@@ -71,16 +71,9 @@ class FastShowPrettyMacros(val q: Quotes)
       def repeatAppend(sb: Expr[StringBuilder], value: Expr[String], times: Expr[Int]): Expr[StringBuilder] =
         '{ Runtime.repeatAppend($sb, ${ value }, ${ times }) }
 
-      def appendCaseClassStart(
-          sb: Expr[StringBuilder],
-          className: Expr[String]
-      ): Expr[Unit] =
+      def appendCaseClassStart(sb: Expr[StringBuilder], className: Expr[String]): Expr[Unit] =
         '{ Runtime.appendCaseClassStart(${ sb }, ${ className }) }
-      def appendCaseClassEnd(
-          sb: Expr[StringBuilder],
-          indent: Expr[String],
-          nesting: Expr[Int]
-      ): Expr[Unit] =
+      def appendCaseClassEnd(sb: Expr[StringBuilder], indent: Expr[String], nesting: Expr[Int]): Expr[Unit] =
         '{ Runtime.appendCaseClassEnd(${ sb }, ${ indent }, ${ nesting }) }
 
       def appendFieldStart(
@@ -90,9 +83,7 @@ class FastShowPrettyMacros(val q: Quotes)
           nesting: Expr[Int]
       ): Expr[Unit] =
         '{ Runtime.appendFieldStart(${ sb }, ${ fieldName }, ${ indent }, ${ nesting }) }
-      def appendFieldEnd(
-          sb: Expr[StringBuilder]
-      ): Expr[Unit] =
+      def appendFieldEnd(sb: Expr[StringBuilder]): Expr[Unit] =
         '{ Runtime.appendFieldEnd(${ sb }) }
 
       def appendCaseObject(sb: Expr[StringBuilder], className: Expr[String]): Expr[Unit] =

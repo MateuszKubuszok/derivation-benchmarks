@@ -87,15 +87,8 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
       def append(sb: Expr[StringBuilder], value: Expr[String]): Expr[StringBuilder]
       def repeatAppend(sb: Expr[StringBuilder], value: Expr[String], times: Expr[Int]): Expr[StringBuilder]
 
-      def appendCaseClassStart(
-          sb: Expr[StringBuilder],
-          className: Expr[String]
-      ): Expr[Unit]
-      def appendCaseClassEnd(
-          sb: Expr[StringBuilder],
-          indent: Expr[String],
-          nesting: Expr[Int]
-      ): Expr[Unit]
+      def appendCaseClassStart(sb: Expr[StringBuilder], className: Expr[String]): Expr[Unit]
+      def appendCaseClassEnd(sb: Expr[StringBuilder], indent: Expr[String], nesting: Expr[Int]): Expr[Unit]
 
       def appendFieldStart(
           sb: Expr[StringBuilder],
@@ -103,9 +96,8 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
           indent: Expr[String],
           nesting: Expr[Int]
       ): Expr[Unit]
-      def appendFieldEnd(
-          sb: Expr[StringBuilder]
-      ): Expr[Unit]
+      def appendFieldEnd(sb: Expr[StringBuilder]): Expr[Unit]
+
       def appendCaseObject(sb: Expr[StringBuilder], className: Expr[String]): Expr[Unit]
     }
 
@@ -145,24 +137,16 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
 
     def append(value: Expr[String]): Expr[StringBuilder] =
       ShowExpr.StringBuilder.append(sb, value)
-    def repeatAppend(
-        value: Expr[String],
-        times: Expr[Int]
-    ): Expr[StringBuilder] = ShowExpr.StringBuilder.repeatAppend(sb, value, times)
+    def repeatAppend(value: Expr[String], times: Expr[Int]): Expr[StringBuilder] =
+      ShowExpr.StringBuilder.repeatAppend(sb, value, times)
 
-    def appendCaseClassStart(
-        className: Expr[String]
-    ): Expr[Unit] = ShowExpr.StringBuilder.appendCaseClassStart(sb, className)
-    def appendCaseClassEnd(
-        indent: Expr[String],
-        nesting: Expr[Int]
-    ): Expr[Unit] = ShowExpr.StringBuilder.appendCaseClassEnd(sb, indent, nesting)
+    def appendCaseClassStart(className: Expr[String]): Expr[Unit] =
+      ShowExpr.StringBuilder.appendCaseClassStart(sb, className)
+    def appendCaseClassEnd(indent: Expr[String], nesting: Expr[Int]): Expr[Unit] =
+      ShowExpr.StringBuilder.appendCaseClassEnd(sb, indent, nesting)
 
-    def appendFieldStart(
-        fieldName: Expr[String],
-        indent: Expr[String],
-        nesting: Expr[Int]
-    ): Expr[Unit] = ShowExpr.StringBuilder.appendFieldStart(sb, fieldName, indent, nesting)
+    def appendFieldStart(fieldName: Expr[String], indent: Expr[String], nesting: Expr[Int]): Expr[Unit] =
+      ShowExpr.StringBuilder.appendFieldStart(sb, fieldName, indent, nesting)
     def appendFieldEnd: Expr[Unit] = ShowExpr.StringBuilder.appendFieldEnd(sb)
 
     def appendCaseObject(className: Expr[String]): Expr[Unit] = ShowExpr.StringBuilder.appendCaseObject(sb, className)

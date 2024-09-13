@@ -82,32 +82,20 @@ class FastShowPrettyMacros(val c: blackbox.Context)
       def repeatAppend(sb: Expr[StringBuilder], value: Expr[String], times: Expr[Int]): Expr[StringBuilder] =
         c.Expr[StringBuilder](q"_root_.example.showmacros.internal.Runtime.repeatAppend($sb, $value, $times)")
 
-      def appendCaseClassStart(
-          sb: Expr[StringBuilder],
-          className: Expr[String]
-      ): Expr[Unit] =
+      def appendCaseClassStart(sb: Expr[StringBuilder], className: Expr[String]): Expr[Unit] =
         c.Expr[Unit](q"_root_.example.showmacros.internal.Runtime.appendCaseClassStart($sb, $className)")
-      def appendCaseClassEnd(
-          sb: Expr[StringBuilder],
-          indent: Expr[String],
-          nesting: Expr[Int]
-      ): Expr[Unit] =
+      def appendCaseClassEnd(sb: Expr[StringBuilder], indent: Expr[String], nesting: Expr[Int]): Expr[Unit] =
         c.Expr[Unit](q"_root_.example.showmacros.internal.Runtime.appendCaseClassEnd($sb, $indent, $nesting)")
+
       def appendFieldStart(
           sb: Expr[StringBuilder],
           fieldName: Expr[String],
           indent: Expr[String],
           nesting: Expr[Int]
       ): Expr[Unit] =
-        c.Expr[Unit](
-          q"_root_.example.showmacros.internal.Runtime.appendFieldStart($sb, $fieldName, $indent, $nesting)"
-        )
-      def appendFieldEnd(
-          sb: Expr[StringBuilder]
-      ): Expr[Unit] =
-        c.Expr[Unit](
-          q"_root_.example.showmacros.internal.Runtime.appendFieldEnd($sb)"
-        )
+        c.Expr[Unit](q"_root_.example.showmacros.internal.Runtime.appendFieldStart($sb, $fieldName, $indent, $nesting)")
+      def appendFieldEnd(sb: Expr[StringBuilder]): Expr[Unit] =
+        c.Expr[Unit](q"_root_.example.showmacros.internal.Runtime.appendFieldEnd($sb)")
 
       def appendCaseObject(sb: Expr[StringBuilder], className: Expr[String]): Expr[Unit] =
         c.Expr[Unit](q"_root_.example.showmacros.internal.Runtime.appendCaseObject($sb, $className)")
