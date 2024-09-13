@@ -122,7 +122,7 @@ class FastShowPrettyMacros(val c: blackbox.Context)
 
   def newDefCache[F[_]: DirectStyle]: DefCache[F] = new DefCache[F] {
 
-    protected def define1[In1: Type, Out: Type]: (Expr[In1] => Expr[Out]) => Def = body =>
+    protected def define1[In1: Type, Out: Type]: Define[Expr[In1], Expr[Out]] = (body, isRecursive) =>
       new Def {
         def ref: Any = body // TODO
         def prependDef[A: Type](expr: Expr[A]): Expr[A] = expr // TODO

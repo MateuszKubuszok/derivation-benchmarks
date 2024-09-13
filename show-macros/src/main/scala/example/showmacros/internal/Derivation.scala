@@ -194,6 +194,11 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
   }
 
   abstract class DefCache[F[_]: DirectStyle] {
+    // Soo... neither a =:= b nor Type.isSameAs(a, b) want to work with Type[?] :/
+    implicit private class TypeAnyOps[A](private val tpe: Type[A]) {
+      def asAny: Type[Any] = tpe.asInstanceOf[Type[Any]]
+    }
+
     private case class Signature(name: String, input: List[Type[Any]], output: Type[Any]) {
 
       override def hashCode(): Int = name.hashCode
@@ -206,50 +211,68 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
           output =:= output2
         case _ => false
       }
-
-      // Soo... neither a =:= b nor Type.isSameAs(a, b) want to work with Type[?] :/
     }
-    implicit private class TypeAnyOps[A](private val tpe: Type[A]) {
-      def asAny: Type[Any] = tpe.asInstanceOf[Type[Any]]
+    private object Signature {
+      def apply[In1: Type, Out: Type](name: String) =
+        new Signature(name, List(Type[In1].asAny), Type[Out].asAny)
     }
-    private def signature1[In1: Type, Out: Type](name: String) = Signature(name, List(Type[In1].asAny), Type[Out].asAny)
 
+    // Allows accessing def inside its body
+    protected trait RecurDef {
+      def ref: Any
+      var isRecursive: Boolean
+      final def cast[A]: A = ref.asInstanceOf[A]
+    }
+
+    // Allows accessing def once it's defined
     protected trait Def {
       def ref: Any
       def prependDef[A: Type](expr: Expr[A]): Expr[A]
       final def cast[A]: A = ref.asInstanceOf[A]
     }
 
-    private var defs = ListMap.empty[Signature, Def]
+    // Platform-specific way of creating def out of its body
+    protected trait Define[In, Out] {
+      def apply(body: In => Out, isRecursive: Boolean): Def
+    }
+
+    private var inProgress = ListMap.empty[Signature, RecurDef]
+    private var defined = ListMap.empty[Signature, Def]
+
+    private def unsafeGet[A](signature: Signature): Option[A] =
+      defined.get(signature).map(_.cast[A]).orElse(inProgress.get(signature).map(_.tap(_.isRecursive = true).cast[A]))
 
     final class Builder[In, Out, A] private (
         private val signature: Signature,
         private val body: In => A,
-        private val define: (In => Out) => Def
+        private val define: Define[In, Out]
     ) {
       def map[B](f: A => B): Builder[In, Out, B] =
         new Builder[In, Out, B](signature, body andThen f, define)
       def emap[B](f: A => F[B]): Builder[In, Out, B] =
         new Builder[In, Out, B](signature, body andThen f andThen DirectStyle[F].awaitUnsafe, define)
-      def build(implicit ev: A =:= Out): Unit =
-        defs = defs + (signature -> define(body.asInstanceOf[In => Out]))
+      def build(implicit ev: (In => A) =:= (In => Out)): Unit = {
+        val isRecursive = inProgress.get(signature).exists(_.isRecursive)
+        inProgress = inProgress.removed(signature)
+        defined = defined + (signature -> define(ev(body), isRecursive))
+      }
     }
     private object Builder {
-      def apply[In, Out](signature: Signature, make: (In => Out) => Def): Builder[In, Out, In] =
-        new Builder[In, Out, In](signature, identity[In](_), make)
+      def apply[In, Out](signature: Signature, define: Define[In, Out]): Builder[In, Out, In] =
+        new Builder[In, Out, In](signature, identity[In](_), define)
     }
 
     final def build1[In1: Type, Out: Type](name: String): Builder[Expr[In1], Expr[Out], Expr[In1]] =
-      Builder(signature1[In1, Out](name), define1)
+      Builder(Signature[In1, Out](name), define1)
 
-    final def of1[In1: Type, Out: Type](name: String): Option[Expr[In1] => F[Expr[Out]]] = defs
-      .get(signature1[In1, Out](name))
-      .map(def1 => in => DirectStyle[F].asyncUnsafe(def1.cast[Expr[In1] => Expr[Out]](in)))
+    final def of1[In1: Type, Out: Type](name: String): Option[Expr[In1] => F[Expr[Out]]] =
+      unsafeGet[Expr[In1] => Expr[Out]](Signature[In1, Out](name)).map(fn => in => DirectStyle[F].asyncUnsafe(fn(in)))
 
-    final def prependDefs[A: Type](expr: Expr[A]): Expr[A] = defs.values.foldLeft(expr)((e, def0) => def0.prependDef(e))
+    final def prependDefs[A: Type](expr: Expr[A]): Expr[A] =
+      defined.values.foldLeft(expr)((e, def0) => def0.prependDef(e))
 
-    // platform-specific implementations
-    protected def define1[In1: Type, Out: Type]: (Expr[In1] => Expr[Out]) => Def
+    // Platform-specific implementations
+    protected def define1[In1: Type, Out: Type]: Define[Expr[In1], Expr[Out]]
   }
 
   def newDefCache[F[_]: DirectStyle]: DefCache[F]
