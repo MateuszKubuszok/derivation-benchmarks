@@ -47,6 +47,15 @@ class FastShowPrettyMacros(val q: Quotes)
 
     object FastShowPretty extends FastShowPrettyModule {
 
+      def instance[A: Type](
+          body: (Expr[A], Expr[StringBuilder], Expr[String], Expr[Int]) => Expr[StringBuilder]
+      ): Expr[FastShowPretty[A]] = '{
+        new FastShowPretty[A] {
+          def showPretty(value: A, sb: StringBuilder, indent: String, nesting: Int): StringBuilder =
+            ${ body('{ value }, '{ sb }, '{ indent }, '{ nesting }) }
+        }
+      }
+
       def showPretty[A: Type](
           instance: Expr[FastShowPretty[A]],
           value: Expr[A],
@@ -109,11 +118,10 @@ class FastShowPrettyMacros(val q: Quotes)
     def void[A: Type](expr: Expr[A]): Expr[Unit] = '{ ${ expr }; () }
   }
 
-  def deriveFastShowPretty[A: Type]: Expr[FastShowPretty[A]] = '{
-    new FastShowPretty[A] {
-      def showPretty(value: A, sb: StringBuilder, indent: String, nesting: Int): StringBuilder =
-        ${ deriveShowingExpression[A](ShowingContext.create[A]('{ value }, '{ sb }, '{ indent }, '{ nesting })) }
-    }
+  // Macro's entrypoint
+  def deriveFastShowPretty[A: Type]: Expr[FastShowPretty[A]] = ShowExpr.FastShowPretty.instance[A] {
+    (value, sb, indent, nesting) =>
+      deriveShowingExpression(ShowingContext.create[A](value, sb, indent, nesting))
   }
 }
 object FastShowPrettyMacros {

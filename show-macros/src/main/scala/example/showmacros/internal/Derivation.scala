@@ -68,6 +68,10 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
     val FastShowPretty: FastShowPrettyModule
     trait FastShowPrettyModule { this: FastShowPretty.type =>
 
+      def instance[A: Type](
+          body: (Expr[A], Expr[StringBuilder], Expr[String], Expr[Int]) => Expr[StringBuilder]
+      ): Expr[FastShowPretty[A]]
+
       def showPretty[A: Type](
           instance: Expr[FastShowPretty[A]],
           value: Expr[A],

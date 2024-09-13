@@ -40,6 +40,33 @@ class FastShowPrettyMacros(val c: blackbox.Context)
 
     object FastShowPretty extends FastShowPrettyModule {
 
+      def instance[A: Type](
+          body: (Expr[A], Expr[StringBuilder], Expr[String], Expr[Int]) => Expr[StringBuilder]
+      ): Expr[FastShowPretty[A]] = {
+        val value = ExprPromise.platformSpecific.freshTermName("value")
+        val sb = ExprPromise.platformSpecific.freshTermName("sb")
+        val indent = ExprPromise.platformSpecific.freshTermName("indent")
+        val nesting = ExprPromise.platformSpecific.freshTermName("nesting")
+        c.Expr[FastShowPretty[A]](
+          q"""
+          new ${Type[FastShowPretty[A]]} {
+    
+            def showPretty(
+              $value: ${Type[A]},
+              $sb: ${Type[StringBuilder]},
+              $indent: ${Type[String]},
+              $nesting: ${Type[Int]}
+            ): ${Type[StringBuilder]} = ${body(
+              c.Expr[A](q"$value"),
+              c.Expr[StringBuilder](q"$sb"),
+              c.Expr[String](q"$indent"),
+              c.Expr[Int](q"$nesting")
+            )}
+          }
+          """
+        )
+      }
+
       def showPretty[A: Type](
           instance: Expr[FastShowPretty[A]],
           value: Expr[A],
@@ -105,30 +132,9 @@ class FastShowPrettyMacros(val c: blackbox.Context)
     def void[A: Type](expr: Expr[A]): Expr[Unit] = c.Expr[Unit](q"$expr")
   }
 
-  def deriveFastShowPretty[A: c.WeakTypeTag]: c.Expr[FastShowPretty[A]] = {
-    val value = ExprPromise.platformSpecific.freshTermName("value")
-    val sb = ExprPromise.platformSpecific.freshTermName("sb")
-    val indent = ExprPromise.platformSpecific.freshTermName("indent")
-    val nesting = ExprPromise.platformSpecific.freshTermName("nesting")
-    c.Expr[FastShowPretty[A]](
-      q"""
-      new ${Type[FastShowPretty[A]]} {
-
-        def showPretty(
-          $value: ${Type[A]},
-          $sb: ${Type[StringBuilder]},
-          $indent: ${Type[String]},
-          $nesting: ${Type[Int]}
-        ): ${Type[StringBuilder]} = ${deriveShowingExpression(
-          ShowingContext.create[A](
-            c.Expr[A](q"$value"),
-            c.Expr[StringBuilder](q"$sb"),
-            c.Expr[String](q"$indent"),
-            c.Expr[Int](q"$nesting")
-          )
-        )}
-      }
-      """
-    )
+  // Macro's entrypoint
+  def deriveFastShowPretty[A: Type]: Expr[FastShowPretty[A]] = ShowExpr.FastShowPretty.instance[A] {
+    (value, sb, indent, nesting) =>
+      deriveShowingExpression(ShowingContext.create[A](value, sb, indent, nesting))
   }
 }
