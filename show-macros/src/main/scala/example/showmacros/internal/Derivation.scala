@@ -6,14 +6,18 @@ import io.scalaland.chimney.internal.compiletime.datatypes.{ProductTypes, Sealed
 import io.scalaland.chimney.internal.compiletime.fp.{Applicative, Parallel, Traverse}
 import io.scalaland.chimney.internal.compiletime.fp.Implicits.*
 
+import scala.collection.immutable.ListMap
 import scala.collection.mutable
 import scala.util.chaining.*
+import scala.util.control.NoStackTrace
 
 trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
 
   // Here we are using utilities from chimney-macro-commons instead of Scala 2/Scala 3 macros directly.
   // We'll use "Show" prefix because we are working on Show library, and we don't want to mix these definitions
   // with definitions coming from chimney-macro-commons.
+
+  import Type.Implicits.*
 
   // Let's define the types used specifically by this library:
 
@@ -114,10 +118,8 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
 
     def void[A: Type](expr: Expr[A]): Expr[Unit]
 
-    def unitBlock(statements: Expr[Unit]*): Expr[Unit] = {
-      import Type.Implicits.*
+    def unitBlock(statements: Expr[Unit]*): Expr[Unit] =
       Expr.block[Unit](statements.toList.asInstanceOf[List[Expr[Unit]]], Expr.Unit)
-    }
   }
 
   // As the next step, let's define some extension methods to make the work Expr-essions easier:
@@ -177,7 +179,80 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
   // - logging,
   // - adjusting values for recursive derivation,
   // - chain-of-responsibility,
+  // - caching
   // etc
+
+  trait DirectStyle[F[_]] {
+
+    def asyncUnsafe[A](thunk: => A): F[A]
+    def awaitUnsafe[A](value: F[A]): A
+    def async[A, B](await: (F[A] => A) => B): F[B] = asyncUnsafe(await(awaitUnsafe))
+  }
+  object DirectStyle {
+
+    def apply[F[_]](implicit F: DirectStyle[F]): DirectStyle[F] = F
+  }
+
+  abstract class DefCache[F[_]: DirectStyle] {
+    private case class Signature(name: String, input: List[Type[Any]], output: Type[Any]) {
+
+      override def hashCode(): Int = name.hashCode
+
+      override def equals(obj: Any): Boolean = obj match {
+        case Signature(name2, input2, output2) =>
+          name == name2 &&
+          input.length == input2.length &&
+          input.zip(input2).forall(p => p._1 =:= p._2) &&
+          output =:= output2
+        case _ => false
+      }
+
+      // Soo... neither a =:= b nor Type.isSameAs(a, b) want to work with Type[?] :/
+    }
+    implicit private class TypeAnyOps[A](private val tpe: Type[A]) {
+      def asAny: Type[Any] = tpe.asInstanceOf[Type[Any]]
+    }
+    private def signature1[In1: Type, Out: Type](name: String) = Signature(name, List(Type[In1].asAny), Type[Out].asAny)
+
+    protected trait Def {
+      def ref: Any
+      def prependDef[A: Type](expr: Expr[A]): Expr[A]
+      final def cast[A]: A = ref.asInstanceOf[A]
+    }
+
+    private var defs = ListMap.empty[Signature, Def]
+
+    final class Builder[In, Out, A] private (
+        private val signature: Signature,
+        private val body: In => A,
+        private val define: (In => Out) => Def
+    ) {
+      def map[B](f: A => B): Builder[In, Out, B] =
+        new Builder[In, Out, B](signature, body andThen f, define)
+      def emap[B](f: A => F[B]): Builder[In, Out, B] =
+        new Builder[In, Out, B](signature, body andThen f andThen DirectStyle[F].awaitUnsafe, define)
+      def build(implicit ev: A =:= Out): Unit =
+        defs = defs + (signature -> define(body.asInstanceOf[In => Out]))
+    }
+    private object Builder {
+      def apply[In, Out](signature: Signature, make: (In => Out) => Def): Builder[In, Out, In] =
+        new Builder[In, Out, In](signature, identity[In](_), make)
+    }
+
+    final def build1[In1: Type, Out: Type](name: String): Builder[Expr[In1], Expr[Out], Expr[In1]] =
+      Builder(signature1[In1, Out](name), define1)
+
+    final def of1[In1: Type, Out: Type](name: String): Option[Expr[In1] => F[Expr[Out]]] = defs
+      .get(signature1[In1, Out](name))
+      .map(def1 => in => DirectStyle[F].asyncUnsafe(def1.cast[Expr[In1] => Expr[Out]](in)))
+
+    final def prependDefs[A: Type](expr: Expr[A]): Expr[A] = defs.values.foldLeft(expr)((e, def0) => def0.prependDef(e))
+
+    // platform-specific implementations
+    protected def define1[In1: Type, Out: Type]: (Expr[In1] => Expr[Out]) => Def
+  }
+
+  def newDefCache[F[_]: DirectStyle]: DefCache[F]
 
   case class ShowingContext[A](
       // Input data required for rendering the currently handled value/type
@@ -189,6 +264,7 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
       // Metadata/configs
       avoidImplicit: Boolean,
       recurNesting: Int,
+      defCache: DefCache[DerivationResult],
       // Logging
       log: mutable.ListBuffer[String]
   ) {
@@ -216,7 +292,8 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
       nesting = nesting,
       avoidImplicit = true,
       recurNesting = 0,
-      log = mutable.ListBuffer.empty[String]
+      log = mutable.ListBuffer.empty[String],
+      defCache = newDefCache[DerivationResult]
     )
   }
 
@@ -229,6 +306,7 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
   def nesting(implicit ctx: ShowingContext[?]): Expr[Int] = ctx.nesting
   def shouldAvoidImplicit(implicit ctx: ShowingContext[?]): Boolean = ctx.avoidImplicit
   def shouldLog: Boolean = XMacroSettings.contains("fastshowpretty.logging=true")
+  def defCache(implicit ctx: ShowingContext[?]): DefCache[DerivationResult] = ctx.defCache
   def log(msg: String)(implicit ctx: ShowingContext[?]): Unit = if (shouldLog) {
     ctx.log.addOne(("  " * ctx.recurNesting) + " - " + msg)
   }
@@ -238,6 +316,7 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
   sealed trait DerivationError
   object DerivationError {
     case class TypeNotSupported(typeName: String) extends DerivationError
+    case class DefNotFound(typeName: String) extends DerivationError
     case class AssertionFailed(msg: String) extends DerivationError
   }
 
@@ -247,6 +326,18 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
       for { a <- fa; b <- fb } yield f(a, b)
     def pure[A](a: A): DerivationResult[A] = Right(a)
   }
+  implicit val directStyleResult: DirectStyle[DerivationResult] = new DirectStyle[DerivationResult] {
+    private case class PassErrors(errors: List[DerivationError]) extends NoStackTrace
+    def asyncUnsafe[A](thunk: => A): DerivationResult[A] = try
+      Right(thunk)
+    catch {
+      case PassErrors(errors) => Left(errors)
+    }
+    def awaitUnsafe[A](value: DerivationResult[A]): A = value match {
+      case Left(errors) => throw PassErrors(errors)
+      case Right(value) => value
+    }
+  }
 
   // Provides slightly better description of the intent than nested Options and Eithers
   type FinalResult = DerivationResult[Expr[Unit]]
@@ -254,6 +345,35 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
   def ruleNotMatched: Option[FinalResult] = None
   def ruleMatched(fr: FinalResult): Option[FinalResult] = Some(fr)
   def ruleSucceeded(sb: Expr[Unit]): Option[FinalResult] = Some(Right(sb))
+
+  // To decrease the size of the code and speed up both compilation we'll cache some rule bodies as defs.
+
+  // Here, we're making assumption that the input type is enough to distinct these defs in our macro.
+  def cacheName[A: ShowingContext]: String = "show_" + ShowType.simpleName[A]
+
+  // Caches the rule implementation as a def the first time it is required. Fails if def couldn't be created.
+  def cacheRuleAsDef[A: ShowingContext](
+      applyUpdatedCtx: ShowingContext[A] => FinalResult
+  ): FinalResult = {
+    val defName = cacheName[A]
+    defCache.of1[A, Unit](defName).orElse {
+      defCache
+        .build1[A, Unit](defName)
+        .emap { (newValue: Expr[A]) =>
+          // for now let's hardcode nesting :P, sb is virtually the same always
+          applyUpdatedCtx(implicitly[ShowingContext[A]].copy[A](value = newValue, nesting = Expr.Int(0)))
+        }
+        .build
+      defCache.of1[A, Unit](defName)
+    } match {
+      case Some(defBody) => defBody(value[A]) // calls def with actual value
+      case None          => derivationFailed(DerivationError.DefNotFound(Type.prettyPrint[A]))
+    }
+  }
+
+  // Use cache if available, pass if not.
+  def useCache[A: ShowingContext]: Option[FinalResult] =
+    defCache.of1[A, Unit](cacheName[A]).map(fn => fn(value[A]))
 
   trait DerivationRule {
 
@@ -280,6 +400,11 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
 
     private def handleInstance[A: ShowingContext](instance: Expr[FastShowPretty[A]]): Expr[Unit] =
       instance.showPretty(value[A], sb, indent, nesting).void
+  }
+
+  case object CachedDefRule extends DerivationRule {
+
+    def attempt[A: ShowingContext]: Option[FinalResult] = useCache[A]
   }
 
   case object BuildInRule extends DerivationRule {
@@ -385,7 +510,7 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
       // Uses utilities from ProductTypes mixin.
       case ProductType(Product(Product.Extraction(extraction), Product.Constructor(parameters, _))) =>
         if (Type[A].isCaseClass || Type[A].isCaseObject) {
-          ruleMatched(handleCaseClassOrFail(extraction, parameters))
+          ruleMatched(cacheRuleAsDef[A](ctx => handleCaseClassOrFail(extraction, parameters)(ctx)))
         } else {
           log(s"We could access ${Type.prettyPrint[A]} fields and constructor, but it's not a case class")
           ruleNotMatched
@@ -449,8 +574,9 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
 
     def attempt[A: ShowingContext]: Option[FinalResult] = Type[A] match {
       // Uses utilities from SealedHierarchies mixin.
-      case SealedHierarchy(subtypes) => ruleMatched(handleSealedTraitOrFail(subtypes.elements))
-      case _                         => ruleNotMatched
+      case SealedHierarchy(subtypes) =>
+        ruleMatched(cacheRuleAsDef[A](ctx => handleSealedTraitOrFail(subtypes.elements)(ctx)))
+      case _ => ruleNotMatched
     }
 
     private def handleSealedTraitOrFail[A: ShowingContext](
@@ -473,7 +599,7 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
     }
   }
 
-  val rules = List(ImplicitRule, BuildInRule, ProductRule, SumTypeRule)
+  val rules = List(ImplicitRule, CachedDefRule, BuildInRule, ProductRule, SumTypeRule)
 
   def deriveShowing[A: ShowingContext]: FinalResult = rules
     .foldLeft {
@@ -520,8 +646,10 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
   def deriveShowingExpression[A: ShowingContext]: Expr[StringBuilder] =
     deriveShowing[A]
       .map { expr =>
-        // Makes sure that StringBuilder is returned, as expected by API
-        Expr.block[StringBuilder](List(expr), sb).tap(e => log(s"The final expression is:\n${e.prettyPrint}"))
+        // Makes sure that StringBuilder is returned, as expected by API and prepend all the generated defs.
+        Expr
+          .block[StringBuilder](List(defCache.prependDefs(expr)), sb)
+          .tap(e => log(s"The final expression is:\n${e.prettyPrint}"))
       }
       .tap { _ =>
         // Show the log in the compilation output/IDE/Scastie if -Xmacro-settings:fastshowpretty.logging=true was passed
@@ -534,7 +662,11 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
         val humanReadableErrors = errors
           .map {
             case DerivationError.TypeNotSupported(typeName) => s"No build-in support nor implicit for type $typeName"
-            case DerivationError.AssertionFailed(msg)       => s"Assertion failed during derivation: $msg"
+
+            case DerivationError.DefNotFound(typeName) => s"Attempt to cache showing $typeName as def failed"
+
+            case DerivationError.AssertionFailed(msg) => s"Assertion failed during derivation: $msg"
+
           }
           .mkString("\n")
         reportError(

@@ -120,6 +120,15 @@ class FastShowPrettyMacros(val c: blackbox.Context)
     def void[A: Type](expr: Expr[A]): Expr[Unit] = c.Expr[Unit](q"$expr")
   }
 
+  def newDefCache[F[_]: DirectStyle]: DefCache[F] = new DefCache[F] {
+
+    protected def define1[In1: Type, Out: Type]: (Expr[In1] => Expr[Out]) => Def = body =>
+      new Def {
+        def ref: Any = body // TODO
+        def prependDef[A: Type](expr: Expr[A]): Expr[A] = expr // TODO
+      }
+  }
+
   // Macro's entrypoint
   def deriveFastShowPretty[A: Type]: Expr[FastShowPretty[A]] = ShowExpr.FastShowPretty.instance[A] {
     (value, sb, indent, nesting) =>
