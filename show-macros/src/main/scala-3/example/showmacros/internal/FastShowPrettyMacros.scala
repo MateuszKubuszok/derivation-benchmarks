@@ -110,11 +110,71 @@ class FastShowPrettyMacros(val q: Quotes)
   }
 
   def newDefCache[F[_]: DirectStyle]: DefCache[F] = new DefCache[F] {
+    import ExprPromise.platformSpecific.freshTerm
 
-    protected def define1[In1: Type, Out: Type]: Define[Expr[In1], Expr[Out]] = (body, isRecursive) =>
-      new Def {
-        def ref: Any = body // TODO
-        def prependDef[A: Type](expr: Expr[A]): Expr[A] = expr // TODO
+    protected def define1[In1: Type, Out: Type](name: String): Define[Expr[In1], Expr[Out]] =
+      new Define[Expr[In1], Expr[Out]] {
+        private val symbol = Symbol.newMethod(
+          Symbol.spliceOwner,
+          freshTerm(name),
+          MethodType(List(freshTerm("in1")))(_ => List(TypeRepr.of[In1]), _ => TypeRepr.of[Out])
+        )
+        private val call: Expr[In1] => Expr[Out] = in1 =>
+          Ref(symbol).appliedToArgss(List(List(in1.asTerm))).asExprOf[Out]
+
+        def apply(body: Expr[In1] => Expr[Out]): Def = new Def {
+          def prependDef[A: Type](expr: Expr[A]): Expr[A] = Block(
+            List(
+              DefDef(
+                symbol,
+                {
+                  case List(List(in1: Term)) =>
+                    Some(body(in1.asExprOf[In1]).asTerm.changeOwner(symbol))
+                  case _ => None
+                }
+              )
+            ),
+            expr.asTerm
+          ).changeOwner(Symbol.spliceOwner).asExprOf[A]
+          def cast[A]: A = call.asInstanceOf[A]
+        }
+        val pending: PendingDef = new PendingDef {
+          var isRecursive: Boolean = false
+          def cast[A]: A = call.asInstanceOf[A]
+        }
+      }
+    protected def define2[In1: Type, In2: Type, Out: Type](name: String): Define[(Expr[In1], Expr[In2]), Expr[Out]] =
+      new Define[(Expr[In1], Expr[In2]), Expr[Out]] {
+        private val symbol = Symbol.newMethod(
+          Symbol.spliceOwner,
+          freshTerm(name),
+          MethodType(List(freshTerm("in1"), freshTerm("in2")))(
+            _ => List(TypeRepr.of[In1], TypeRepr.of[In2]),
+            _ => TypeRepr.of[Out]
+          )
+        )
+        private val call: (Expr[In1], Expr[In2]) => Expr[Out] = (in1, in2) =>
+          Ref(symbol).appliedToArgss(List(List(in1.asTerm, in2.asTerm))).asExprOf[Out]
+
+        def apply(body: ((Expr[In1], Expr[In2])) => Expr[Out]): Def = new Def {
+          def prependDef[A: Type](expr: Expr[A]): Expr[A] = Block(
+            List(
+              DefDef(
+                symbol,
+                {
+                  case List(List(in1: Term, in2: Term)) =>
+                    Some(body((in1.asExprOf[In1], in2.asExprOf[In2])).asTerm.changeOwner(symbol))
+                  case _ => None
+                }
+              )
+            ),
+            expr.asTerm
+          ).changeOwner(Symbol.spliceOwner).asExprOf[A]
+          def cast[A]: A = call.asInstanceOf[A]
+        }
+        val pending: PendingDef = new PendingDef {
+          def cast[A]: A = call.asInstanceOf[A]
+        }
       }
   }
 

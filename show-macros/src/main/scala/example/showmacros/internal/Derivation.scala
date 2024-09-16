@@ -211,36 +211,39 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
           output =:= output2
         case _ => false
       }
+
+      override def toString: String =
+        s"def $name(${input.map(Type.prettyPrint(_)).mkString(", ")}): ${Type.prettyPrint(output)}"
     }
     private object Signature {
       def apply[In1: Type, Out: Type](name: String) =
         new Signature(name, List(Type[In1].asAny), Type[Out].asAny)
+      def apply[In1: Type, In2: Type, Out: Type](name: String) =
+        new Signature(name, List(Type[In1].asAny, Type[In2].asAny), Type[Out].asAny)
     }
 
     // Allows accessing def inside its body
-    protected trait RecurDef {
-      def ref: Any
-      var isRecursive: Boolean
-      final def cast[A]: A = ref.asInstanceOf[A]
+    protected trait PendingDef {
+      def cast[A]: A
     }
 
     // Allows accessing def once it's defined
     protected trait Def {
-      def ref: Any
       def prependDef[A: Type](expr: Expr[A]): Expr[A]
-      final def cast[A]: A = ref.asInstanceOf[A]
+      def cast[A]: A
     }
 
     // Platform-specific way of creating def out of its body
     protected trait Define[In, Out] {
-      def apply(body: In => Out, isRecursive: Boolean): Def
+      def apply(body: In => Out): Def
+      def pending: PendingDef
     }
 
-    private var inProgress = ListMap.empty[Signature, RecurDef]
+    private var pending = ListMap.empty[Signature, PendingDef]
     private var defined = ListMap.empty[Signature, Def]
 
     private def unsafeGet[A](signature: Signature): Option[A] =
-      defined.get(signature).map(_.cast[A]).orElse(inProgress.get(signature).map(_.tap(_.isRecursive = true).cast[A]))
+      defined.get(signature).map(_.cast[A]).orElse(pending.get(signature).map(_.cast[A]))
 
     final class Builder[In, Out, A] private (
         private val signature: Signature,
@@ -252,27 +255,50 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
       def emap[B](f: A => F[B]): Builder[In, Out, B] =
         new Builder[In, Out, B](signature, body andThen f andThen DirectStyle[F].awaitUnsafe, define)
       def build(implicit ev: (In => A) =:= (In => Out)): Unit = {
-        val isRecursive = inProgress.get(signature).exists(_.isRecursive)
-        inProgress = inProgress.removed(signature)
-        defined = defined + (signature -> define(ev(body), isRecursive))
+        pending = pending.removed(signature)
+        defined = defined + (signature -> define(ev(body)))
       }
     }
     private object Builder {
-      def apply[In, Out](signature: Signature, define: Define[In, Out]): Builder[In, Out, In] =
+      def apply[In, Out](signature: Signature, define: Define[In, Out]): Builder[In, Out, In] = {
+        pending = pending + (signature -> define.pending)
         new Builder[In, Out, In](signature, identity[In](_), define)
+      }
     }
 
     final def build1[In1: Type, Out: Type](name: String): Builder[Expr[In1], Expr[Out], Expr[In1]] =
-      Builder(Signature[In1, Out](name), define1)
+      Builder(Signature[In1, Out](name), define1[In1, Out](name))
+    final def build2[In1: Type, In2: Type, Out: Type](
+        name: String
+    ): Builder[(Expr[In1], Expr[In2]), Expr[Out], (Expr[In1], Expr[In2])] =
+      Builder(Signature[In1, In2, Out](name), define2[In1, In2, Out](name))
 
     final def of1[In1: Type, Out: Type](name: String): Option[Expr[In1] => F[Expr[Out]]] =
-      unsafeGet[Expr[In1] => Expr[Out]](Signature[In1, Out](name)).map(fn => in => DirectStyle[F].asyncUnsafe(fn(in)))
+      unsafeGet[Expr[In1] => Expr[Out]](Signature[In1, Out](name)).map(fn => in1 => DirectStyle[F].asyncUnsafe(fn(in1)))
+    final def of2[In1: Type, In2: Type, Out: Type](name: String): Option[(Expr[In1], Expr[In2]) => F[Expr[Out]]] =
+      unsafeGet[(Expr[In1], Expr[In2]) => Expr[Out]](Signature[In1, In2, Out](name)).map(fn =>
+        (in1, in2) => DirectStyle[F].asyncUnsafe(fn(in1, in2))
+      )
 
-    final def prependDefs[A: Type](expr: Expr[A]): Expr[A] =
-      defined.values.foldLeft(expr)((e, def0) => def0.prependDef(e))
+    final def prependDefs[A: Type](expr: Expr[A]): Expr[A] = {
+      var prepended = Set.empty[Signature]
+      var toPrepend = defined.removedAll(prepended)
+      var result = expr
+      // Values to prepend might be lazy so, we have to prepend them until nothing new was computed.
+      while (toPrepend.nonEmpty) {
+        result = toPrepend.values.foldRight(result)((def0, e) => def0.prependDef(e))
+        prepended = prepended ++ toPrepend.keys
+        toPrepend = defined.removedAll(prepended)
+      }
+      result
+    }
 
     // Platform-specific implementations
-    protected def define1[In1: Type, Out: Type]: Define[Expr[In1], Expr[Out]]
+    protected def define1[In1: Type, Out: Type](name: String): Define[Expr[In1], Expr[Out]]
+    protected def define2[In1: Type, In2: Type, Out: Type](name: String): Define[(Expr[In1], Expr[In2]), Expr[Out]]
+
+    override def toString: String =
+      s"DefCache(pending = Seq(${pending.keys.mkString(", ")}), defined = Seq(${defined.keys.mkString(", ")}))"
   }
 
   def newDefCache[F[_]: DirectStyle]: DefCache[F]
@@ -379,24 +405,24 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
       applyUpdatedCtx: ShowingContext[A] => FinalResult
   ): FinalResult = {
     val defName = cacheName[A]
-    defCache.of1[A, Unit](defName).orElse {
+    log(s"Checking if def for ${Type.prettyPrint[A]} exists")
+    defCache.of2[A, Int, Unit](defName).orElse {
       defCache
-        .build1[A, Unit](defName)
-        .emap { (newValue: Expr[A]) =>
-          // for now let's hardcode nesting :P, sb is virtually the same always
-          applyUpdatedCtx(implicitly[ShowingContext[A]].copy[A](value = newValue, nesting = Expr.Int(0)))
+        .build2[A, Int, Unit](defName)
+        .emap { case (newValue: Expr[A], newNesting: Expr[Int]) =>
+          applyUpdatedCtx(implicitly[ShowingContext[A]].copy[A](value = newValue, nesting = newNesting))
         }
         .build
-      defCache.of1[A, Unit](defName)
+      defCache.of2[A, Int, Unit](defName)
     } match {
-      case Some(defBody) => defBody(value[A]) // calls def with actual value
+      case Some(defBody) => defBody(value[A], nesting) // calls def with actual value
       case None          => derivationFailed(DerivationError.DefNotFound(Type.prettyPrint[A]))
     }
   }
 
   // Use cache if available, pass if not.
   def useCache[A: ShowingContext]: Option[FinalResult] =
-    defCache.of1[A, Unit](cacheName[A]).map(fn => fn(value[A]))
+    defCache.of2[A, Int, Unit](cacheName[A]).map(fn => fn(value[A], nesting))
 
   trait DerivationRule {
 
@@ -575,19 +601,11 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
           if (expandedShowPrettyForFields.isEmpty) {
             sb.appendCaseObject(Expr.String(className))
           } else {
-            val body = ShowExpr.unitBlock(
+            ShowExpr.unitBlock(
               (List(sb.appendCaseClassStart(Expr.String(className))) ++ expandedShowPrettyForFields ++ List(
                 sb.appendCaseClassEnd(indent, nesting)
               ))*
             )
-            val shouldCreateBodyAsDef = recurNesting % 2 == 0
-            if (shouldCreateBodyAsDef) {
-              PrependDefinitionsTo
-                .prependLazyVal[Unit](body, ExprPromise.NameGenerationStrategy.FromPrefix("body"))
-                .closeBlockAsExprOf[Unit]
-            } else {
-              body
-            }
           }
         }
     }

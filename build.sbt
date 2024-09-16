@@ -156,6 +156,7 @@ lazy val showMacros = projectMatrix
   .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE *)
   .settings(commonSettings *)
   .settings(
+    scalacOptions += "-Wconf:msg=is unchecked since it is eliminated by erasure:s",
     libraryDependencies += "io.scalaland" %% "chimney-macro-commons" % "1.4.0"
   )
 

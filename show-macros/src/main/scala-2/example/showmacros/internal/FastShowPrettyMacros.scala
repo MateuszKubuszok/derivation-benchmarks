@@ -122,11 +122,57 @@ class FastShowPrettyMacros(val c: blackbox.Context)
 
   def newDefCache[F[_]: DirectStyle]: DefCache[F] = new DefCache[F] {
 
-    protected def define1[In1: Type, Out: Type]: Define[Expr[In1], Expr[Out]] = (body, isRecursive) =>
-      new Def {
-        def ref: Any = body // TODO
-        def prependDef[A: Type](expr: Expr[A]): Expr[A] = expr // TODO
+    protected def define1[In1: Type, Out: Type](name: String): Define[Expr[In1], Expr[Out]] = {
+      import ExprPromise.platformSpecific.freshTermName
+
+      new Define[Expr[In1], Expr[Out]] {
+        private val termName = freshTermName(name)
+        private val call: Expr[In1] => Expr[Out] = in1 => c.Expr[Out](q"$termName($in1)")
+
+        def apply(body: Expr[In1] => Expr[Out]): Def = new Def {
+          def prependDef[A: Type](expr: Expr[A]): Expr[A] = {
+            val in1 = freshTermName(ShowType.simpleName[In1])
+            c.Expr[A](
+              q"""
+              def $termName($in1: ${Type[In1]}): ${Type[Out]} = ${body(c.Expr[In1](q"$in1"))}
+              $expr
+              """
+            )
+          }
+          def cast[A]: A = call.asInstanceOf[A]
+        }
+        val pending: PendingDef = new PendingDef {
+          def cast[A]: A = call.asInstanceOf[A]
+        }
       }
+    }
+    protected def define2[In1: Type, In2: Type, Out: Type](name: String): Define[(Expr[In1], Expr[In2]), Expr[Out]] = {
+      import ExprPromise.platformSpecific.freshTermName
+
+      new Define[(Expr[In1], Expr[In2]), Expr[Out]] {
+        private val termName = freshTermName(name)
+        private val call: (Expr[In1], Expr[In2]) => Expr[Out] = (in1, in2) => c.Expr[Out](q"$termName($in1, $in2)")
+
+        def apply(body: ((Expr[In1], Expr[In2])) => Expr[Out]): Def = new Def {
+          def prependDef[A: Type](expr: Expr[A]): Expr[A] = {
+            val in1 = freshTermName(ShowType.simpleName[In1])
+            val in2 = freshTermName(ShowType.simpleName[In2])
+            c.Expr[A](
+              q"""
+              def $termName($in1: ${Type[In1]}, $in2: ${Type[In2]}): ${Type[Out]} = ${body(
+                  (c.Expr[In1](q"$in1"), c.Expr[In2](q"$in2"))
+                )}
+              $expr
+              """
+            )
+          }
+          def cast[A]: A = call.asInstanceOf[A]
+        }
+        val pending: PendingDef = new PendingDef {
+          def cast[A]: A = call.asInstanceOf[A]
+        }
+      }
+    }
   }
 
   // Macro's entrypoint

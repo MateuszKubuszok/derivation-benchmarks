@@ -77,25 +77,25 @@ showGenericProgrammingAuto   15   5    53  29      s
 showGenericProgrammingSemi   10   2    10   2      s
 showMagnoliaAuto             10   1    43  15      s
 showMagnoliaSemi             10   2     9   1      s
-showSanely                   14   4    16   5      s
+showSanely                    6   1     7   1      s
 ```
 
 Scala 2 runtime performance:
 ```
 [info] Benchmark                                Mode  Cnt  Score   Error   Units
-[info] ShowOutputs.showGenericProgrammingAuto  thrpt   10  2.651 ± 0.012  ops/ms
-[info] ShowOutputs.showGenericProgrammingSemi  thrpt   10  2.829 ± 0.033  ops/ms
-[info] ShowOutputs.showMagnoliaAuto            thrpt   10  3.621 ± 0.017  ops/ms
-[info] ShowOutputs.showMagnoliaSemi            thrpt   10  3.745 ± 0.028  ops/ms
-[info] ShowOutputs.showSanely                  thrpt   10  2.202 ± 0.359  ops/ms
+[info] ShowOutputs.showGenericProgrammingAuto  thrpt   10  2.787 ± 0.015  ops/ms
+[info] ShowOutputs.showGenericProgrammingSemi  thrpt   10  2.860 ± 0.027  ops/ms
+[info] ShowOutputs.showMagnoliaAuto            thrpt   10  3.713 ± 0.039  ops/ms
+[info] ShowOutputs.showMagnoliaSemi            thrpt   10  3.750 ± 0.013  ops/ms
+[info] ShowOutputs.showSanely                  thrpt   10  4.811 ± 0.026  ops/ms
 ```
 
 Scala 3 runtime performance:
 ```
 [info] Benchmark                                Mode  Cnt  Score   Error   Units
-[info] ShowOutputs.showGenericProgrammingAuto  thrpt   10  0.156 ± 0.013  ops/ms
-[info] ShowOutputs.showGenericProgrammingSemi  thrpt   10  3.492 ± 0.013  ops/ms
-[info] ShowOutputs.showMagnoliaAuto            thrpt   10  0.090 ± 0.023  ops/ms
-[info] ShowOutputs.showMagnoliaSemi            thrpt   10  3.918 ± 0.012  ops/ms
-[info] ShowOutputs.showSanely                  thrpt   10  2.204 ± 0.396  ops/ms
+[info] ShowOutputs.showGenericProgrammingAuto  thrpt   10  0.159 ± 0.023  ops/ms
+[info] ShowOutputs.showGenericProgrammingSemi  thrpt   10  3.475 ± 0.051  ops/ms
+[info] ShowOutputs.showMagnoliaAuto            thrpt   10  0.089 ± 0.023  ops/ms
+[info] ShowOutputs.showMagnoliaSemi            thrpt   10  4.096 ± 0.036  ops/ms
+[info] ShowOutputs.showSanely                  thrpt   10  4.800 ± 0.042  ops/ms
 ```
