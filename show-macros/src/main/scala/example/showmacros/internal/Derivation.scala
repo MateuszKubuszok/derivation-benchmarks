@@ -37,12 +37,10 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
 
     def simpleName[A: Type]: String = {
       val colored = Type.prettyPrint[A]
-      val start = colored.lastIndexOf(".") + 1
-      val end = colored.indexOf("[", start) - 1
-      "\u001b\\[([0-9]+)m".r.replaceAllIn(
-        colored.substring(start.max(0), if (end < 0) colored.length else end),
-        ""
-      )
+      val mono = "\u001b\\[([0-9]+)m".r.replaceAllIn(colored, "")
+      val start = mono.lastIndexOf(".") + 1
+      val end = mono.indexOf("[", start) - 1
+      mono.substring(start.max(0), if (end < 0) mono.length else end)
     }
 
     // When needed, import ShowType.Implicits._
