@@ -1,3 +1,4 @@
 -XX:-OmitStackTraceInFastThrow
 -XX:+UseG1GC
+-Xss128m
 -Xmx2g

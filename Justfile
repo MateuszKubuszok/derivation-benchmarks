@@ -50,8 +50,8 @@ hotJvmCompileJSONs:
 [doc('Benchmark runtime')]
 runtimeJSONs:
   sbt --no-server \
-    benchmarks/Jmh/run JsonRoundTrips \
-    benchmarks3/Jmh/run JsonRoundTrips \
+    "benchmarks/Jmh/run JsonRoundTrips" \
+    "benchmarks3/Jmh/run JsonRoundTrips" \
     projects
 
 [doc('Compile each measured Show project with cold JVM (like on CI)')]
@@ -107,6 +107,6 @@ hotJvmCompileShows:
 [doc('Benchmark runtime')]
 runtimeShows:
   sbt --no-server \
-    benchmarks/Jmh/run ShowOutputs \
-    benchmarks3/Jmh/run ShowOutputs \
+    "benchmarks/Jmh/run ShowOutputs" \
+    "benchmarks3/Jmh/run ShowOutputs" \
     projects
