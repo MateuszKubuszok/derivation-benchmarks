@@ -232,7 +232,6 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
   def log(msg: String)(implicit ctx: ShowingContext[?]): Unit = if (shouldLog) {
     ctx.log.addOne(("  " * ctx.recurNesting) + " - " + msg)
   }
-  def recurNesting(implicit ctx: ShowingContext[?]): Int = ctx.recurNesting
   def nestedCtx[B: Type](value: Expr[B], nesting: Expr[Int])(implicit ctx: ShowingContext[?]): ShowingContext[B] =
     ctx.nest(value, nesting)
 
