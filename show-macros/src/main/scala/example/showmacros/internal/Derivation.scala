@@ -280,7 +280,7 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
         (in1, in2) => DirectStyle[F].asyncUnsafe(fn(in1, in2))
       )
 
-    final def prependDefs[A: Type](expr: Expr[A]): Expr[A] = {
+    final def prependDefs[A: Type](expr: Expr[A]): F[Expr[A]] = DirectStyle[F].asyncUnsafe {
       var prepended = Set.empty[Signature]
       var toPrepend = defined.removedAll(prepended)
       var result = expr
@@ -375,8 +375,8 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
       for { a <- fa; b <- fb } yield f(a, b)
     def pure[A](a: A): DerivationResult[A] = Right(a)
   }
+  private case class PassErrors(errors: List[DerivationError]) extends Throwable // extends NoStackTrace
   implicit val directStyleResult: DirectStyle[DerivationResult] = new DirectStyle[DerivationResult] {
-    private case class PassErrors(errors: List[DerivationError]) extends NoStackTrace
     def asyncUnsafe[A](thunk: => A): DerivationResult[A] = try
       Right(thunk)
     catch {
@@ -686,10 +686,11 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
   // Intended for top-level call as it reads the configs and prepares possible diagnostics/error message.
   def deriveShowingExpression[A: ShowingContext]: Expr[StringBuilder] =
     deriveShowing[A]
+      .flatMap(defCache.prependDefs(_))
       .map { expr =>
-        // Makes sure that StringBuilder is returned, as expected by API and prepend all the generated defs.
+        // Makes sure that StringBuilder is returned, as expected by API
         Expr
-          .block[StringBuilder](List(defCache.prependDefs(expr)), sb)
+          .block[StringBuilder](List(expr), sb)
           .tap(e => log(s"The final expression is:\n${e.prettyPrint}"))
       }
       .tap { _ =>
