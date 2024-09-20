@@ -123,20 +123,24 @@ class FastShowPrettyMacros(val q: Quotes)
           Ref(symbol).appliedToArgss(List(List(in1.asTerm))).asExprOf[Out]
 
         def apply(body: Expr[In1] => Expr[Out]): Def = new Def {
+          private val defdef = DirectStyle[F].asyncUnsafe {
+            DefDef(
+              symbol,
+              {
+                case List(List(in1: Term)) =>
+                  Some(body(in1.asExprOf[In1]).asTerm.changeOwner(symbol))
+                case _ => None
+              }
+            )
+          }
           def prependDef[A: Type](expr: Expr[A]): Expr[A] = Block(
-            List(
-              DefDef(
-                symbol,
-                {
-                  case List(List(in1: Term)) =>
-                    Some(body(in1.asExprOf[In1]).asTerm.changeOwner(symbol))
-                  case _ => None
-                }
-              )
-            ),
+            List(DirectStyle[F].awaitUnsafe(defdef)),
             expr.asTerm
           ).changeOwner(Symbol.spliceOwner).asExprOf[A]
-          def cast[A]: A = call.asInstanceOf[A]
+          def cast[A]: A = { (in1: Expr[In1]) =>
+            DirectStyle[F].awaitUnsafe(defdef) // re-fail
+            call(in1)
+          }.asInstanceOf[A]
         }
         val pending: PendingDef = new PendingDef {
           var isRecursive: Boolean = false
@@ -157,20 +161,24 @@ class FastShowPrettyMacros(val q: Quotes)
           Ref(symbol).appliedToArgss(List(List(in1.asTerm, in2.asTerm))).asExprOf[Out]
 
         def apply(body: ((Expr[In1], Expr[In2])) => Expr[Out]): Def = new Def {
+          private val defdef = DirectStyle[F].asyncUnsafe {
+            DefDef(
+              symbol,
+              {
+                case List(List(in1: Term, in2: Term)) =>
+                  Some(body((in1.asExprOf[In1], in2.asExprOf[In2])).asTerm.changeOwner(symbol))
+                case _ => None
+              }
+            )
+          }
           def prependDef[A: Type](expr: Expr[A]): Expr[A] = Block(
-            List(
-              DefDef(
-                symbol,
-                {
-                  case List(List(in1: Term, in2: Term)) =>
-                    Some(body((in1.asExprOf[In1], in2.asExprOf[In2])).asTerm.changeOwner(symbol))
-                  case _ => None
-                }
-              )
-            ),
+            List(DirectStyle[F].awaitUnsafe(defdef)),
             expr.asTerm
           ).changeOwner(Symbol.spliceOwner).asExprOf[A]
-          def cast[A]: A = call.asInstanceOf[A]
+          def cast[A]: A = { (in1: Expr[In1], in2: Expr[In2]) =>
+            DirectStyle[F].awaitUnsafe(defdef) // re-fail
+            call(in1, in2)
+          }.asInstanceOf[A]
         }
         val pending: PendingDef = new PendingDef {
           def cast[A]: A = call.asInstanceOf[A]

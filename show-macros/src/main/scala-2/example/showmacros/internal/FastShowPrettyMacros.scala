@@ -130,16 +130,22 @@ class FastShowPrettyMacros(val c: blackbox.Context)
         private val call: Expr[In1] => Expr[Out] = in1 => c.Expr[Out](q"$termName($in1)")
 
         def apply(body: Expr[In1] => Expr[Out]): Def = new Def {
-          def prependDef[A: Type](expr: Expr[A]): Expr[A] = {
+          private val defdef = DirectStyle[F].asyncUnsafe {
             val in1 = freshTermName(ShowType.simpleName[In1])
-            c.Expr[A](
-              q"""
-              def $termName($in1: ${Type[In1]}): ${Type[Out]} = ${body(c.Expr[In1](q"$in1"))}
-              $expr
-              """
-            )
+            q"""
+            def $termName($in1: ${Type[In1]}): ${Type[Out]} = ${body(c.Expr[In1](q"$in1"))}
+            """
           }
-          def cast[A]: A = call.asInstanceOf[A]
+          def prependDef[A: Type](expr: Expr[A]): Expr[A] = c.Expr[A](
+            q"""
+            ${DirectStyle[F].awaitUnsafe(defdef)}
+            $expr
+            """
+          )
+          def cast[A]: A = { (in1: Expr[In1]) =>
+            DirectStyle[F].awaitUnsafe(defdef) // re-fail
+            call(in1)
+          }.asInstanceOf[A]
         }
         val pending: PendingDef = new PendingDef {
           def cast[A]: A = call.asInstanceOf[A]
@@ -154,19 +160,25 @@ class FastShowPrettyMacros(val c: blackbox.Context)
         private val call: (Expr[In1], Expr[In2]) => Expr[Out] = (in1, in2) => c.Expr[Out](q"$termName($in1, $in2)")
 
         def apply(body: ((Expr[In1], Expr[In2])) => Expr[Out]): Def = new Def {
-          def prependDef[A: Type](expr: Expr[A]): Expr[A] = {
+          private val defdef = DirectStyle[F].asyncUnsafe {
             val in1 = freshTermName(ShowType.simpleName[In1])
             val in2 = freshTermName(ShowType.simpleName[In2])
-            c.Expr[A](
-              q"""
-              def $termName($in1: ${Type[In1]}, $in2: ${Type[In2]}): ${Type[Out]} = ${body(
-                  (c.Expr[In1](q"$in1"), c.Expr[In2](q"$in2"))
-                )}
-              $expr
-              """
-            )
+            q"""
+            def $termName($in1: ${Type[In1]}, $in2: ${Type[In2]}): ${Type[Out]} = ${body(
+                (c.Expr[In1](q"$in1"), c.Expr[In2](q"$in2"))
+              )}
+            """
           }
-          def cast[A]: A = call.asInstanceOf[A]
+          def prependDef[A: Type](expr: Expr[A]): Expr[A] = c.Expr[A](
+            q"""
+            ${DirectStyle[F].awaitUnsafe(defdef)}
+            $expr
+            """
+          )
+          def cast[A]: A = { (in1: Expr[In1], in2: Expr[In2]) =>
+            DirectStyle[F].awaitUnsafe(defdef) // re-fail
+            call(in1, in2)
+          }.asInstanceOf[A]
         }
         val pending: PendingDef = new PendingDef {
           def cast[A]: A = call.asInstanceOf[A]

@@ -255,13 +255,15 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
       def emap[B](f: A => F[B]): Builder[In, Out, B] =
         new Builder[In, Out, B](signature, body andThen f andThen DirectStyle[F].awaitUnsafe, define)
       def build(implicit ev: (In => A) =:= (In => Out)): Unit = {
+        val evaluated = define(ev(body))
         pending = pending.removed(signature)
-        defined = defined + (signature -> define(ev(body)))
+        defined = defined + (signature -> evaluated)
       }
     }
     private object Builder {
       def apply[In, Out](signature: Signature, define: Define[In, Out]): Builder[In, Out, In] = {
-        pending = pending + (signature -> define.pending)
+        val evaluated = define.pending
+        pending = pending + (signature -> evaluated)
         new Builder[In, Out, In](signature, identity[In](_), define)
       }
     }
@@ -281,16 +283,7 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
       )
 
     final def prependDefs[A: Type](expr: Expr[A]): F[Expr[A]] = DirectStyle[F].asyncUnsafe {
-      var prepended = Set.empty[Signature]
-      var toPrepend = defined.removedAll(prepended)
-      var result = expr
-      // Values to prepend might be lazy so, we have to prepend them until nothing new was computed.
-      while (toPrepend.nonEmpty) {
-        result = toPrepend.values.foldRight(result)((def0, e) => def0.prependDef(e))
-        prepended = prepended ++ toPrepend.keys
-        toPrepend = defined.removedAll(prepended)
-      }
-      result
+      defined.values.foldRight(expr)((def0, e) => def0.prependDef(e))
     }
 
     // Platform-specific implementations
