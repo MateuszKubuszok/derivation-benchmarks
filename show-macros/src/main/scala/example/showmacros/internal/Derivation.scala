@@ -400,12 +400,14 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
     val defName = cacheName[A]
     log(s"Checking if def for ${Type.prettyPrint[A]} exists")
     defCache.of2[A, Int, Unit](defName).orElse {
+      log(s"Started deriving def for ${Type.prettyPrint[A]}")
       defCache
         .build2[A, Int, Unit](defName)
         .emap { case (newValue: Expr[A], newNesting: Expr[Int]) =>
           applyUpdatedCtx(implicitly[ShowingContext[A]].copy[A](value = newValue, nesting = newNesting))
         }
         .build
+      log(s"Cached result of def for ${Type.prettyPrint[A]}")
       defCache.of2[A, Int, Unit](defName)
     } match {
       case Some(defBody) => defBody(value[A], nesting) // calls def with actual value
@@ -446,7 +448,9 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
 
   case object CachedDefRule extends DerivationRule {
 
-    def attempt[A: ShowingContext]: Option[FinalResult] = useCache[A]
+    def attempt[A: ShowingContext]: Option[FinalResult] = useCache[A].map(
+      _.tap(r => log(s"Reused derivation computed for ${Type.prettyPrint[A]}"))
+    )
   }
 
   case object BuildInRule extends DerivationRule {
