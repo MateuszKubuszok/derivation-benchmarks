@@ -4,22 +4,20 @@ import example.circemagnolia.DecoderAuto.*
 import example.circemagnolia.EncoderAuto.*
 import example.model1.Out
 import io.circe.Decoder.Result
-import io.circe.Json
+import io.circe.jawn.*
+import io.circe.{Error, Json, Printer}
 import io.circe.syntax.*
 
 object EncodeHelper {
-
-  def encode(out: Out): Json = out.asJson
+  def encode(out: Out): String = Printer.noSpaces.print(out.asJson)
 }
 
 object DecoderHelper {
-
-  def decode(json: Json): Result[Out] = json.as[Out]
+  def decode(json: String): Either[Error, Out] = decodeCharSequence[Out](json)
 }
 
 object CirceMagnoliaAuto {
-
-  def roundTrip(out: Out): (Json, Result[Out]) = {
+  def roundTrip(out: Out): (String, Either[Error, Out]) = {
     // workaround for:
     // [error] Error while emitting example/CirceMagnoliaAuto$
     // [error] Class too large: example/CirceMagnoliaAuto$

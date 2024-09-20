@@ -172,7 +172,8 @@ lazy val circeGenericAuto = projectMatrix
   .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE *)
   .settings(commonSettings *)
   .settings(
-    libraryDependencies += "io.circe" %%% "circe-generic" % "0.14.9",
+    libraryDependencies += "io.circe" %%% "circe-generic" % "0.14.10",
+    libraryDependencies += "io.circe" %%% "circe-jawn" % "0.14.10",
     scalacOptions ++= {
       CrossVersion.partialVersion(scalaVersion.value) match {
         case Some((3, _)) => Seq("-Xmax-inlines", "64")
@@ -188,7 +189,8 @@ lazy val circeGenericSemi = projectMatrix
   .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE *)
   .settings(commonSettings *)
   .settings(
-    libraryDependencies += "io.circe" %% "circe-generic" % "0.14.9"
+    libraryDependencies += "io.circe" %% "circe-generic" % "0.14.10",
+    libraryDependencies += "io.circe" %% "circe-jawn" % "0.14.10"
   )
   .dependsOn(testClasses)
 
@@ -198,7 +200,8 @@ lazy val circeMagnolia = projectMatrix
   .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE *)
   .settings(commonSettings *)
   .settings(
-    libraryDependencies += "io.circe" %%% "circe-core" % "0.14.9",
+    libraryDependencies += "io.circe" %%% "circe-core" % "0.14.10",
+    libraryDependencies += "io.circe" %%% "circe-jawn" % "0.14.10",
     libraryDependencies ++= {
       CrossVersion.partialVersion(scalaVersion.value) match {
         case Some((3, _)) => Seq("com.softwaremill.magnolia1_3" %% "magnolia" % "1.3.7")

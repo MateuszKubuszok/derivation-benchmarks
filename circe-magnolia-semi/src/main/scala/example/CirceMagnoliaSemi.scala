@@ -2,8 +2,8 @@ package example
 
 import example.model1.*
 import example.circemagnolia.{DecoderSemi, EncoderSemi}
-import io.circe.Decoder.Result
-import io.circe.{Decoder, Encoder, Json}
+import io.circe.jawn.*
+import io.circe.{Decoder, Encoder, Error, Printer}
 import io.circe.syntax.*
 
 object CirceMagnoliaSemi {
@@ -21,9 +21,9 @@ object CirceMagnoliaSemi {
   implicit private val outDecoder: Decoder[Out] = DecoderSemi.derived
   implicit private val outEncoder: Encoder[Out] = EncoderSemi.derived
 
-  def roundTrip(out: Out): (Json, Result[Out]) = {
-    val json = out.asJson
-    val parsed = json.as[Out]
+  def roundTrip(out: Out): (String, Either[Error, Out]) = {
+    val json = Printer.noSpaces.print(out.asJson)
+    val parsed = decodeCharSequence[Out](json)
     json -> parsed
   }
 

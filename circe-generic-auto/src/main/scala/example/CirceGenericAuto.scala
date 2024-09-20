@@ -1,16 +1,15 @@
 package example
 
 import example.model1.Out
-import io.circe.Decoder.Result
-import io.circe.Json
+import io.circe.{Error, Printer}
 import io.circe.generic.auto.*
+import io.circe.jawn.*
 import io.circe.syntax.*
 
 object CirceGenericAuto {
-
-  def roundTrip(out: Out): (Json, Result[Out]) = {
-    val json = out.asJson
-    val parsed = json.as[Out]
+  def roundTrip(out: Out): (String, Either[Error, Out]) = {
+    val json = Printer.noSpaces.print(out.asJson)
+    val parsed = decodeCharSequence[Out](json)
     json -> parsed
   }
 
