@@ -239,6 +239,7 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
   sealed trait DerivationError
   object DerivationError {
     case class TypeNotSupported(typeName: String) extends DerivationError
+    case class AssertionFailed(msg: String) extends DerivationError
   }
 
   type DerivationResult[A] = Either[List[DerivationError], A]
@@ -285,6 +286,8 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
   case object BuildInRule extends DerivationRule {
 
     def attempt[A: ShowingContext]: Option[FinalResult] = Type[A] match {
+      case tpe if tpe =:= Type[Nothing] =>
+        Some(derivationFailed(DerivationError.TypeNotSupported(Type.prettyPrint[Nothing])))
       case tpe if tpe =:= Type[String]     => ruleSucceeded(handleString[A])
       case tpe if tpe =:= Type[Char]       => ruleSucceeded(handleChar[A])
       case tpe if tpe =:= Type[Boolean]    => ruleSucceeded(handleBoolean[A])
@@ -480,7 +483,12 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
     } { (result, rule) =>
       result orElse {
         log(s"Attempting rule $rule")
-        rule.attempt[A]
+        try
+          rule.attempt[A]
+        catch {
+          case e: Throwable =>
+            Some(derivationFailed(DerivationError.AssertionFailed(s"Exception in macro: ${e.getMessage}")))
+        }
       }
     }
     .map { result =>
@@ -525,8 +533,9 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
       case Left(errors) =>
         // Adjust error ADT for the reader
         val humanReadableErrors = errors
-          .map { case DerivationError.TypeNotSupported(typeName) =>
-            s"No build-in support nor implicit for type $typeName"
+          .map {
+            case DerivationError.TypeNotSupported(typeName) => s"No build-in support nor implicit for type $typeName"
+            case DerivationError.AssertionFailed(msg)       => s"Assertion failed during derivation: $msg"
           }
           .mkString("\n")
         reportError(

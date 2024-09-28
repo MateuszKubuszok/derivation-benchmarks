@@ -13,7 +13,7 @@ Projects:
  * `jsoniterScalaSemi` - 1 JSON roundtrip with recursive semi-automatic derivation with Jsoniter Scala
  * `jsoniterScalaSanely` - 1 JSON roundtrip with sanely-automatic derivation using Jsoniter Scala under the hood (on Scala 3)
 
-> `circeMagnolia` was based on https://github.com/vpavkin/circe-magnolia/ since I couldn't found
+> `circeMagnolia` was based on https://github.com/vpavkin/circe-magnolia/ since I couldn't find
 > any maintained up-to-date Magnolia-based derivation for Circe.
 
 Compilation time of the module (with only 1 needed implicit)

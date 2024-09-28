@@ -163,6 +163,8 @@ lazy val showSanely = projectMatrix
   .in(file("show-sanely"))
   .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE *)
   .settings(commonSettings *)
+  // Uncomment to enable logging from FastShowPretty macros
+  //.settings(scalacOptions += "-Xmacro-settings:fastshowpretty.logging=true")
   .dependsOn(testClasses, showMacros)
 
 // Circe-related experiments
