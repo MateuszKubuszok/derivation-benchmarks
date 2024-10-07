@@ -1,8 +1,8 @@
 import commandmatrix.extra.*
 
 val versions = new {
-  val scala2 = "2.13.14"
-  val scala3 = "3.3.3"
+  val scala2 = "2.13.15"
+  val scala3 = "3.3.4"
 
   // Which versions should be cross-compiled for publishing
   val scalas = List(scala2, scala3)
@@ -157,7 +157,7 @@ lazy val showMacros = projectMatrix
   .settings(commonSettings *)
   .settings(
     scalacOptions += "-Wconf:msg=is unchecked since it is eliminated by erasure:s",
-    libraryDependencies += "io.scalaland" %% "chimney-macro-commons" % "1.4.0"
+    libraryDependencies += "io.scalaland" %% "chimney-macro-commons" % "1.5.0"
   )
 
 lazy val showSanely = projectMatrix

@@ -3,7 +3,7 @@ package example.showmacros.internal
 import example.showmacros.FastShowPretty
 import io.scalaland.chimney.internal.compiletime.Definitions
 import io.scalaland.chimney.internal.compiletime.datatypes.{ProductTypes, SealedHierarchies}
-import io.scalaland.chimney.internal.compiletime.fp.{Applicative, Parallel, Traverse}
+import io.scalaland.chimney.internal.compiletime.fp.{Applicative, DirectStyle, Parallel, Traverse}
 import io.scalaland.chimney.internal.compiletime.fp.Implicits.*
 
 import scala.collection.immutable.ListMap
@@ -182,120 +182,6 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
   // - caching
   // etc
 
-  trait DirectStyle[F[_]] {
-
-    def asyncUnsafe[A](thunk: => A): F[A]
-    def awaitUnsafe[A](value: F[A]): A
-    def async[A, B](await: (F[A] => A) => B): F[B] = asyncUnsafe(await(awaitUnsafe))
-  }
-  object DirectStyle {
-
-    def apply[F[_]](implicit F: DirectStyle[F]): DirectStyle[F] = F
-  }
-
-  abstract class DefCache[F[_]: DirectStyle] {
-    // Soo... neither a =:= b nor Type.isSameAs(a, b) want to work with Type[?] :/
-    implicit private class TypeAnyOps[A](private val tpe: Type[A]) {
-      def asAny: Type[Any] = tpe.asInstanceOf[Type[Any]]
-    }
-
-    private case class Signature(name: String, input: List[Type[Any]], output: Type[Any]) {
-
-      override def hashCode(): Int = name.hashCode
-
-      override def equals(obj: Any): Boolean = obj match {
-        case Signature(name2, input2, output2) =>
-          name == name2 &&
-          input.length == input2.length &&
-          input.zip(input2).forall(p => p._1 =:= p._2) &&
-          output =:= output2
-        case _ => false
-      }
-
-      override def toString: String =
-        s"def $name(${input.map(Type.prettyPrint(_)).mkString(", ")}): ${Type.prettyPrint(output)}"
-    }
-    private object Signature {
-      def apply[In1: Type, Out: Type](name: String) =
-        new Signature(name, List(Type[In1].asAny), Type[Out].asAny)
-      def apply[In1: Type, In2: Type, Out: Type](name: String) =
-        new Signature(name, List(Type[In1].asAny, Type[In2].asAny), Type[Out].asAny)
-    }
-
-    // Allows accessing def inside its body
-    protected trait PendingDef {
-      def cast[A]: A
-    }
-
-    // Allows accessing def once it's defined
-    protected trait Def {
-      def prependDef[A: Type](expr: Expr[A]): Expr[A]
-      def cast[A]: A
-    }
-
-    // Platform-specific way of creating def out of its body
-    protected trait Define[In, Out] {
-      def apply(body: In => Out): Def
-      def pending: PendingDef
-    }
-
-    private var pending = ListMap.empty[Signature, PendingDef]
-    private var defined = ListMap.empty[Signature, Def]
-
-    private def unsafeGet[A](signature: Signature): Option[A] =
-      defined.get(signature).map(_.cast[A]).orElse(pending.get(signature).map(_.cast[A]))
-
-    final class Builder[In, Out, A] private (
-        private val signature: Signature,
-        private val body: In => A,
-        private val define: Define[In, Out]
-    ) {
-      def map[B](f: A => B): Builder[In, Out, B] =
-        new Builder[In, Out, B](signature, body andThen f, define)
-      def emap[B](f: A => F[B]): Builder[In, Out, B] =
-        new Builder[In, Out, B](signature, body andThen f andThen DirectStyle[F].awaitUnsafe, define)
-      def build(implicit ev: (In => A) =:= (In => Out)): Unit = {
-        val evaluated = define(ev(body))
-        pending = pending.removed(signature)
-        defined = defined + (signature -> evaluated)
-      }
-    }
-    private object Builder {
-      def apply[In, Out](signature: Signature, define: Define[In, Out]): Builder[In, Out, In] = {
-        val evaluated = define.pending
-        pending = pending + (signature -> evaluated)
-        new Builder[In, Out, In](signature, identity[In](_), define)
-      }
-    }
-
-    final def build1[In1: Type, Out: Type](name: String): Builder[Expr[In1], Expr[Out], Expr[In1]] =
-      Builder(Signature[In1, Out](name), define1[In1, Out](name))
-    final def build2[In1: Type, In2: Type, Out: Type](
-        name: String
-    ): Builder[(Expr[In1], Expr[In2]), Expr[Out], (Expr[In1], Expr[In2])] =
-      Builder(Signature[In1, In2, Out](name), define2[In1, In2, Out](name))
-
-    final def of1[In1: Type, Out: Type](name: String): Option[Expr[In1] => F[Expr[Out]]] =
-      unsafeGet[Expr[In1] => Expr[Out]](Signature[In1, Out](name)).map(fn => in1 => DirectStyle[F].asyncUnsafe(fn(in1)))
-    final def of2[In1: Type, In2: Type, Out: Type](name: String): Option[(Expr[In1], Expr[In2]) => F[Expr[Out]]] =
-      unsafeGet[(Expr[In1], Expr[In2]) => Expr[Out]](Signature[In1, In2, Out](name)).map(fn =>
-        (in1, in2) => DirectStyle[F].asyncUnsafe(fn(in1, in2))
-      )
-
-    final def prependDefs[A: Type](expr: Expr[A]): F[Expr[A]] = DirectStyle[F].asyncUnsafe {
-      defined.values.foldRight(expr)((def0, e) => def0.prependDef(e))
-    }
-
-    // Platform-specific implementations
-    protected def define1[In1: Type, Out: Type](name: String): Define[Expr[In1], Expr[Out]]
-    protected def define2[In1: Type, In2: Type, Out: Type](name: String): Define[(Expr[In1], Expr[In2]), Expr[Out]]
-
-    override def toString: String =
-      s"DefCache(pending = Seq(${pending.keys.mkString(", ")}), defined = Seq(${defined.keys.mkString(", ")}))"
-  }
-
-  def newDefCache[F[_]: DirectStyle]: DefCache[F]
-
   case class ShowingContext[A](
       // Input data required for rendering the currently handled value/type
       shown: Type[A],
@@ -335,7 +221,7 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
       avoidImplicit = true,
       recurNesting = 0,
       log = mutable.ListBuffer.empty[String],
-      defCache = newDefCache[DerivationResult]
+      defCache = DefCache[DerivationResult]
     )
   }
 
@@ -369,17 +255,7 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
     def pure[A](a: A): DerivationResult[A] = Right(a)
   }
   private case class PassErrors(errors: List[DerivationError]) extends Throwable // extends NoStackTrace
-  implicit val directStyleResult: DirectStyle[DerivationResult] = new DirectStyle[DerivationResult] {
-    def asyncUnsafe[A](thunk: => A): DerivationResult[A] = try
-      Right(thunk)
-    catch {
-      case PassErrors(errors) => Left(errors)
-    }
-    def awaitUnsafe[A](value: DerivationResult[A]): A = value match {
-      case Left(errors) => throw PassErrors(errors)
-      case Right(value) => value
-    }
-  }
+  implicit val directStyleResult: DirectStyle[DerivationResult] = DirectStyle.directStyleForEither
 
   // Provides slightly better description of the intent than nested Options and Eithers
   type FinalResult = DerivationResult[Expr[Unit]]
@@ -391,7 +267,7 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
   // To decrease the size of the code and speed up both compilation we'll cache some rule bodies as defs.
 
   // Here, we're making assumption that the input type is enough to distinct these defs in our macro.
-  def cacheName[A: ShowingContext]: String = "show_" + ShowType.simpleName[A]
+  def cacheName[A: ShowingContext]: String = "show_" + Type.simplePrint[A]
 
   // Caches the rule implementation as a def the first time it is required. Fails if def couldn't be created.
   def cacheRuleAsDef[A: ShowingContext](
@@ -594,7 +470,7 @@ trait Derivation extends Definitions with ProductTypes with SealedHierarchies {
         }
         .sequence
         .map { expandedShowPrettyForFields =>
-          val className = ShowType.simpleName[A]
+          val className = Type.simplePrint[A]
           if (expandedShowPrettyForFields.isEmpty) {
             sb.appendCaseObject(Expr.String(className))
           } else {
