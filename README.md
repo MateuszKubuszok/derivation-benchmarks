@@ -68,6 +68,10 @@ Projects:
 >    uses `lazy val`s to split the code internally into smaller methods (but still in a naive way)
 >  - meanwhile the code on [`cache`](https://github.com/MateuszKubuszok/derivation-benchmarks/tree/cache)
 >    uses `def`s to reuse the derived code and save time both during compilation and in runtime
+>  - since this ability is quite useful and the code implementing it looks scary this utility was added
+>    to [Chimney Macro Commons](https://chimney.readthedocs.io/en/stable/cookbook/#chimney-macro-commons)
+>    1.5.0 - [`cache-using-chimney`](https://github.com/MateuszKubuszok/derivation-benchmarks/tree/cache-using-chimney)
+>    looks much less terrifying :)
 
 Compilation time of the module (with only 1 needed implicit)
 ```
