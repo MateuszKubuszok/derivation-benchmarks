@@ -69,6 +69,7 @@ lazy val root = project
   .aggregate(circeMagnoliaAuto.projectRefs *)
   .aggregate(circeMagnoliaSemi.projectRefs *)
   .aggregate(jsoniterScalaWrapper.projectRefs *)
+  .aggregate(jsoniterScalaAuto.projectRefs *)
   .aggregate(jsoniterScalaSanely.projectRefs *)
   .aggregate(jsoniterScalaSemi.projectRefs *)
 
@@ -251,13 +252,23 @@ lazy val jsoniterScalaSanely = projectMatrix
   .settings(commonSettings *)
   .dependsOn(testClasses, jsoniterScalaWrapper)
 
+lazy val jsoniterScalaAuto = projectMatrix
+  .in(file("jsoniter-scala-auto"))
+  .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE *)
+  .settings(commonSettings *)
+  .settings(
+    libraryDependencies += "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-core" % "2.30.11",
+    libraryDependencies += "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-macros" % "2.30.11"
+  )
+  .dependsOn(testClasses)
+
 lazy val jsoniterScalaSemi = projectMatrix
   .in(file("jsoniter-scala-semi"))
   .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE *)
   .settings(commonSettings *)
   .settings(
-    libraryDependencies += "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-core" % "2.30.9",
-    libraryDependencies += "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-macros" % "2.30.9"
+    libraryDependencies += "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-core" % "2.30.11",
+    libraryDependencies += "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-macros" % "2.30.11"
   )
   .dependsOn(testClasses)
 
@@ -278,6 +289,7 @@ lazy val benchmarks = projectMatrix
     circeGenericSemi,
     circeMagnoliaAuto,
     circeMagnoliaSemi,
+    jsoniterScalaAuto,
     jsoniterScalaSemi
   )
   .enablePlugins(JmhPlugin)

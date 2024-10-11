@@ -43,5 +43,8 @@ class JsonRoundTrips extends JsonRoundTripPlatform {
   def circeMagnoliaSemi: Any = CirceMagnoliaSemi.roundTrip(out)
 
   @Benchmark
+  def jsoniterScalaAuto: Any = JsoniterScalaAuto.roundTrip(out)
+
+  @Benchmark
   def jsoniterScalaSemi: Any = JsoniterScalaSemi.roundTrip(out)
 }
