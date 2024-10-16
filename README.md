@@ -72,6 +72,8 @@ Projects:
 >    to [Chimney Macro Commons](https://chimney.readthedocs.io/en/stable/cookbook/#chimney-macro-commons)
 >    1.5.0 - [`cache-using-chimney`](https://github.com/MateuszKubuszok/derivation-benchmarks/tree/cache-using-chimney)
 >    looks much less terrifying :)
+>  - I turned that branch into a [GitHub template](https://github.com/scalalandio/chimney-macro-commons-template)
+>    if you wanted to experiment with cross-compilable macros ;)
 
 Compilation time of the module (with only 1 needed implicit)
 ```
