@@ -1,9 +1,9 @@
 package example
 
 import example.model1.*
-import io.circe.Decoder.Result
-import io.circe.{Decoder, Encoder, Json}
+import io.circe.{Decoder, Encoder, Error, Printer}
 import io.circe.generic.semiauto.*
+import io.circe.jawn.*
 import io.circe.syntax.*
 
 object CirceGenericSemi {
@@ -21,9 +21,9 @@ object CirceGenericSemi {
   implicit private val outDecoder: Decoder[Out] = deriveDecoder
   implicit private val outEncoder: Encoder[Out] = deriveEncoder
 
-  def roundTrip(out: Out): (Json, Result[Out]) = {
-    val json = out.asJson
-    val parsed = json.as[Out]
+  def roundTrip(out: Out): (String, Either[Error, Out]) = {
+    val json = Printer.noSpaces.print(out.asJson)
+    val parsed = decodeCharSequence[Out](json)
     json -> parsed
   }
 
