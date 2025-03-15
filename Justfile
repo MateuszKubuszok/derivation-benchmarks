@@ -64,7 +64,7 @@ coldJvmCompileShows:
     showMagnolia/compile \
     showMagnolia3/compile \
     showMacros/compile \
-    showMacros3/compile \
+    showMacros3_73/compile \
     update
   sbt --no-server showGenericProgrammingAuto/clean  "show showGenericProgrammingAuto/name"  showGenericProgrammingAuto/compile
   sbt --no-server showGenericProgrammingAuto3/clean "show showGenericProgrammingAuto3/name" showGenericProgrammingAuto3/compile
@@ -75,7 +75,7 @@ coldJvmCompileShows:
   sbt --no-server showMagnoliaSemi/clean            "show showMagnoliaSemi/name"            showMagnoliaSemi/compile
   sbt --no-server showMagnoliaSemi3/clean           "show showMagnoliaSemi3/name"           showMagnoliaSemi3/compile
   sbt --no-server showSanely/clean                  "show showSanely/name"                  showSanely/compile
-  sbt --no-server showSanely3/clean                 "show showSanely3/name"                 showSanely3/compile
+  sbt --no-server showSanely3_73/clean              "show showSanely3_73/name"              showSanely3_73/compile
 
 [doc('Compile each measured JSON project with how JVM (like with development)')]
 hotJvmCompileShows:
@@ -90,7 +90,7 @@ hotJvmCompileShows:
     showMagnoliaSemi/clean            showMagnoliaSemi/compile \
     showMagnoliaSemi3/clean           showMagnoliaSemi3/compile \
     showSanely/clean                  showSanely/compile \
-    showSanely3/clean                 showSanely3/compile \
+    showSanely/clean                  showSanely3_73/compile \
     "set logLevel := Level.Info" \
     showGenericProgrammingAuto/clean  "show showGenericProgrammingAuto/name"  showGenericProgrammingAuto/compile \
     showGenericProgrammingAuto3/clean "show showGenericProgrammingAuto3/name" showGenericProgrammingAuto3/compile \
@@ -101,7 +101,7 @@ hotJvmCompileShows:
     showMagnoliaSemi/clean            "show showMagnoliaSemi/name"            showMagnoliaSemi/compile \
     showMagnoliaSemi3/clean           "show showMagnoliaSemi3/name"           showMagnoliaSemi3/compile \
     showSanely/clean                  "show showSanely/name"                  showSanely/compile \
-    showSanely3/clean                 "show showSanely3/name"                 showSanely3/compile \
+    showSanely3_73/clean              "show showSanely3_73/name"              showSanely3_73/compile \
     projects
 
 [doc('Benchmark runtime')]
