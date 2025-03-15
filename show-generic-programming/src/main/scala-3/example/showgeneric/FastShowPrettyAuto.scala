@@ -16,39 +16,42 @@ object FastShowPrettyAuto {
       case _: Mirror.SingletonProxy => primitive(_ => valueOf[m.MirroredLabel])
     }
 
-  inline def deriveProduct[A](implicit p: Mirror.ProductOf[A]): FastShowPretty[A] =
-    new FastShowPretty[A] {
-      private val name: String = valueOf[p.MirroredLabel]
-      private val meta: Array[(String, FastShowPretty[Any])] = {
-        val labels =
-          summonAll[Tuple.Map[p.MirroredElemLabels, ValueOf]].toList.asInstanceOf[List[ValueOf[String]]].map(_.value)
-        val instances =
-          summonAll[Tuple.Map[p.MirroredElemTypes, FastShowPretty]].toList.asInstanceOf[List[FastShowPretty[Any]]]
-        labels.zip(instances).toArray
-      }
+  inline def deriveProduct[A](implicit p: Mirror.ProductOf[A]): FastShowPretty[A] = ProductImpl(
+    name = valueOf[p.MirroredLabel],
+    meta = {
+      lazy val labels =
+        summonAll[Tuple.Map[p.MirroredElemLabels, ValueOf]].toList.asInstanceOf[List[ValueOf[String]]].map(_.value)
+      lazy val instances =
+        summonAll[Tuple.Map[p.MirroredElemTypes, FastShowPretty]].toList.asInstanceOf[List[FastShowPretty[Any]]]
+      labels.zip(instances).toArray
+    }
+  )
+  class ProductImpl[A](name: String, meta: Array[(String, FastShowPretty[Any])]) extends FastShowPretty[A] {
 
-      def showPretty(value: A, sb: StringBuilder, indent: String = "  ", nesting: Int = 0): StringBuilder = {
-        sb.append(name)
-        if meta.nonEmpty then {
-          sb.append("(\n")
-          value.asInstanceOf[Product].productIterator.zipWithIndex.foreach { case (field, idx) =>
-            val (fieldName, typeclass) = meta(idx)
-            repeatAppend(sb, indent, nesting + 1).append(fieldName).append(" = ")
-            typeclass.showPretty(field, sb, indent, nesting + 1).append(",\n")
-          }
-          sb.deleteCharAt(sb.length() - 2) // removes last ',' (last-but-1 char, where length-1 is last char)
-          repeatAppend(sb, indent, nesting).append(")")
+    def showPretty(value: A, sb: StringBuilder, indent: String = "  ", nesting: Int = 0): StringBuilder = {
+      sb.append(name)
+      if meta.nonEmpty then {
+        sb.append("(\n")
+        value.asInstanceOf[Product].productIterator.zipWithIndex.foreach { case (field, idx) =>
+          val (fieldName, typeclass) = meta(idx)
+          repeatAppend(sb, indent, nesting + 1).append(fieldName).append(" = ")
+          typeclass.showPretty(field, sb, indent, nesting + 1).append(",\n")
         }
-        sb
+        sb.deleteCharAt(sb.length() - 2) // removes last ',' (last-but-1 char, where length-1 is last char)
+        repeatAppend(sb, indent, nesting).append(")")
       }
+      sb
     }
+  }
 
-  inline def deriveSumType[A](implicit s: Mirror.SumOf[A]): FastShowPretty[A] =
-    new FastShowPretty[A] {
-      private val instances =
-        summonAll[Tuple.Map[s.MirroredElemTypes, FastShowPretty]].toList.asInstanceOf[List[FastShowPretty[Any]]].toArray
+  inline def deriveSumType[A](implicit s: Mirror.SumOf[A]): FastShowPretty[A] = SumType[A](
+    s = s,
+    instances =
+      summonAll[Tuple.Map[s.MirroredElemTypes, FastShowPretty]].toList.asInstanceOf[List[FastShowPretty[Any]]].toArray
+  )
+  class SumType[A](s: Mirror.SumOf[A], instances: Array[FastShowPretty[Any]]) extends FastShowPretty[A] {
 
-      def showPretty(value: A, sb: StringBuilder, indent: String = "  ", nesting: Int = 0): StringBuilder =
-        instances(s.ordinal(value)).showPretty(value, sb, indent, nesting)
-    }
+    def showPretty(value: A, sb: StringBuilder, indent: String = "  ", nesting: Int = 0): StringBuilder =
+      instances(s.ordinal(value)).showPretty(value, sb, indent, nesting)
+  }
 }

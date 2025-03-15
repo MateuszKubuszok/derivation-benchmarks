@@ -38,7 +38,7 @@ private[circemagnolia] trait MagnoliaDecoder extends Derivation[Decoder] {
                 c.history
               )
             )
-            result <- c.get(key)(theSubtype.typeclass)
+            result <- c.get(key)(using theSubtype.typeclass)
           } yield result
         case _ =>
           Left(

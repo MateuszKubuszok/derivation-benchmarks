@@ -1,8 +1,8 @@
 import commandmatrix.extra.*
 
 val versions = new {
-  val scala2 = "2.13.15"
-  val scala3 = "3.3.4"
+  val scala2 = "2.13.16"
+  val scala3 = "3.7.0-RC1"
 
   // Which versions should be cross-compiled for publishing
   val scalas = List(scala2, scala3)
@@ -35,16 +35,17 @@ val commonSettings = Seq(
   ),
   libraryDependencies ++= {
     CrossVersion.partialVersion(scalaVersion.value) match {
-      case Some((2, _)) => Seq(
-        "org.scala-lang" % "scala-reflect" % scalaVersion.value % Provided,
-        compilerPlugin("org.typelevel" % "kind-projector" % "0.13.3" cross CrossVersion.full)
-      )
-      case _            => Seq.empty
+      case Some((2, _)) =>
+        Seq(
+          "org.scala-lang" % "scala-reflect" % scalaVersion.value % Provided,
+          compilerPlugin("org.typelevel" % "kind-projector" % "0.13.3" cross CrossVersion.full)
+        )
+      case _ => Seq.empty
     }
   },
   scalacOptions ++= {
     CrossVersion.partialVersion(scalaVersion.value) match {
-      case Some((3, _)) => Seq("-no-indent", "-Ykind-projector:underscores")
+      case Some((3, _)) => Seq("-no-indent", "-Xkind-projector:underscores")
       case _            => Seq("-Xsource:3")
     }
   }
@@ -63,6 +64,8 @@ lazy val root = project
   .aggregate(showMagnoliaSemi.projectRefs *)
   .aggregate(showMacros.projectRefs *)
   .aggregate(showSanely.projectRefs *)
+  .aggregate(showMacros3_7.projectRefs *)
+  .aggregate(showSanely3_7.projectRefs *)
   .aggregate(circeGenericAuto.projectRefs *)
   .aggregate(circeGenericSemi.projectRefs *)
   .aggregate(circeMagnolia.projectRefs *)
@@ -153,7 +156,7 @@ lazy val showMagnoliaSemi = projectMatrix
 
 lazy val showMacros = projectMatrix
   .in(file("show-macros"))
-  .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE *)
+  .someVariations(List(versions.scala2), versions.platforms)(only1VersionInIDE *)
   .settings(commonSettings *)
   .settings(
     scalacOptions += "-Wconf:msg=is unchecked since it is eliminated by erasure:s",
@@ -162,11 +165,28 @@ lazy val showMacros = projectMatrix
 
 lazy val showSanely = projectMatrix
   .in(file("show-sanely"))
-  .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE *)
+  .someVariations(List(versions.scala2), versions.platforms)(only1VersionInIDE *)
   .settings(commonSettings *)
   // Uncomment to enable logging from FastShowPretty macros
-  //.settings(scalacOptions += "-Xmacro-settings:fastshowpretty.logging=true")
+  // .settings(scalacOptions += "-Xmacro-settings:fastshowpretty.logging=true")
   .dependsOn(testClasses, showMacros)
+
+lazy val showMacros3_7 = projectMatrix
+  .in(file("show-macros-3.7"))
+  .someVariations(List(versions.scala3), versions.platforms)(only1VersionInIDE *)
+  .settings(commonSettings *)
+  .settings(
+    scalacOptions += "-Wconf:msg=is unchecked since it is eliminated by erasure:s",
+    libraryDependencies += "io.scalaland" %% "chimney-macro-commons" % "1.5.0"
+  )
+
+lazy val showSanely3_7 = projectMatrix
+  .in(file("show-sanely-3.7"))
+  .someVariations(List(versions.scala3), versions.platforms)(only1VersionInIDE *)
+  .settings(commonSettings *)
+  // Uncomment to enable logging from FastShowPretty macros
+  // .settings(scalacOptions += "-Xmacro-settings:fastshowpretty.logging=true")
+  .dependsOn(testClasses, showMacros3_7)
 
 // Circe-related experiments
 
@@ -266,15 +286,20 @@ lazy val benchmarks = projectMatrix
   .in(file("benchmarks"))
   .someVariations(versions.scalas, versions.platforms)(
     (MatrixAction
+      .ForScala(_.isScala2)
+      .Configure(
+        _.dependsOn(showSanely.jvm(versions.scala2))
+      ) +: MatrixAction
       .ForScala(_.isScala3)
-      .Configure(_.dependsOn(jsoniterScalaSanely.jvm(versions.scala3))) +: only1VersionInIDE).toSeq *
+      .Configure(
+        _.dependsOn(showSanely3_7.jvm(versions.scala3), jsoniterScalaSanely.jvm(versions.scala3))
+      ) +: only1VersionInIDE).toSeq *
   )
   .dependsOn(
     showGenericProgrammingAuto,
     showGenericProgrammingSemi,
     showMagnoliaAuto,
     showMagnoliaSemi,
-    showSanely,
     circeGenericAuto,
     circeGenericSemi,
     circeMagnoliaAuto,

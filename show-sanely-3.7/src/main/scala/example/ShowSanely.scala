@@ -1,7 +1,7 @@
 package example
 
 import example.model1.*
-import example.showmacros.*
+import example.showmacros3_7.*
 
 object ShowSanely {
 
