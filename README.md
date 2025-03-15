@@ -20,33 +20,33 @@ Compilation time of the module (with only 1 needed implicit)
 ```
                      Scala 2   Scala 3  Units
 compilation of      cold hot  cold hot
-circeGenericAuto      14   4    46  16      s
-circeGenericSemi      12   3    10   1      s
-circeMagnoliaAuto     13   2    65  32      s
-circeMagnoliaSemi     12   7    12   2      s
-jsoniterScalaSanely    -   -     9   1      s
-jsoniterScalaSemi     10   4     8   1      s
+circeGenericAuto       3   1    15   9      s
+circeGenericSemi       3   1     2   0      s
+circeMagnoliaAuto      3   1    23  17      s
+circeMagnoliaSemi      3   0     3   0      s
+jsoniterScalaSanely    -   -     3   0      s
+jsoniterScalaSemi      2   0     2   0      s
 ```
 
 Scala 2 runtime performance:
 ```
 [info] Benchmark                          Mode  Cnt   Score   Error   Units
-[info] JsonRoundTrips.circeGenericAuto    thrpt  10   7.319 ± 0.011  ops/ms
-[info] JsonRoundTrips.circeGenericSemi    thrpt  10   6.775 ± 0.013  ops/ms
-[info] JsonRoundTrips.circeMagnoliaAuto   thrpt  10   7.689 ± 0.013  ops/ms
-[info] JsonRoundTrips.circeMagnoliaSemi   thrpt  10   7.838 ± 0.013  ops/ms
-[info] JsonRoundTrips.jsoniterScalaSemi   thrpt  10  20.081 ± 0.151  ops/ms
+[info] JsonRoundTrips.circeGenericAuto   thrpt   10   8.392 ± 0.137  ops/ms
+[info] JsonRoundTrips.circeGenericSemi   thrpt   10   8.815 ± 0.121  ops/ms
+[info] JsonRoundTrips.circeMagnoliaAuto  thrpt   10   9.469 ± 0.165  ops/ms
+[info] JsonRoundTrips.circeMagnoliaSemi  thrpt   10   9.443 ± 0.143  ops/ms
+[info] JsonRoundTrips.jsoniterScalaSemi  thrpt   10  24.615 ± 0.101  ops/ms
 ```
 
 Scala 3 runtime performance:
 ```
 [info] Benchmark                            Mode  Cnt   Score   Error   Units
-[info] JsonRoundTrips.circeGenericAuto     thrpt   10   0.490 ± 0.432  ops/ms
-[info] JsonRoundTrips.circeGenericSemi     thrpt   10   4.607 ± 0.014  ops/ms
-[info] JsonRoundTrips.circeMagnoliaAuto    thrpt   10   0.077 ± 0.039  ops/ms
-[info] JsonRoundTrips.circeMagnoliaSemi    thrpt   10   5.590 ± 0.013  ops/ms
-[info] JsonRoundTrips.jsoniterScalaSanely  thrpt   10  21.408 ± 0.070  ops/ms
-[info] JsonRoundTrips.jsoniterScalaSemi    thrpt   10  21.480 ± 0.070  ops/ms
+[info] JsonRoundTrips.circeGenericAuto     thrpt   10   3.394 ± 1.267  ops/ms
+[info] JsonRoundTrips.circeGenericSemi     thrpt   10   8.047 ± 0.096  ops/ms
+[info] JsonRoundTrips.circeMagnoliaAuto    thrpt   10   0.128 ± 0.062  ops/ms
+[info] JsonRoundTrips.circeMagnoliaSemi    thrpt   10   6.176 ± 0.104  ops/ms
+[info] JsonRoundTrips.jsoniterScalaSanely  thrpt   10  24.460 ± 0.149  ops/ms
+[info] JsonRoundTrips.jsoniterScalaSemi    thrpt   10  24.396 ± 0.116  ops/ms
 ```
 
 ## Show output generation
@@ -73,29 +73,29 @@ Compilation time of the module (with only 1 needed implicit)
 ```
                             Scala 2   Scala 3  Units
 compilation of             cold hot  cold hot
-showGenericProgrammingAuto   15   5    53  29      s
-showGenericProgrammingSemi   10   2    10   2      s
-showMagnoliaAuto             10   1    43  15      s
-showMagnoliaSemi             10   2     9   1      s
-showSanely                    6   1     7   1      s
+showGenericProgrammingAuto    3   1     7   3      s
+showGenericProgrammingSemi    2   0     2   0      s
+showMagnoliaAuto              2   0    14   8      s
+showMagnoliaSemi              2   0     2   0      s
+showSanely                    1   0     2   0      s
 ```
 
 Scala 2 runtime performance:
 ```
 [info] Benchmark                                Mode  Cnt  Score   Error   Units
-[info] ShowOutputs.showGenericProgrammingAuto  thrpt   10  2.787 ± 0.015  ops/ms
-[info] ShowOutputs.showGenericProgrammingSemi  thrpt   10  2.860 ± 0.027  ops/ms
-[info] ShowOutputs.showMagnoliaAuto            thrpt   10  3.713 ± 0.039  ops/ms
-[info] ShowOutputs.showMagnoliaSemi            thrpt   10  3.750 ± 0.013  ops/ms
-[info] ShowOutputs.showSanely                  thrpt   10  4.811 ± 0.026  ops/ms
+[info] ShowOutputs.showGenericProgrammingAuto  thrpt   10  5.584 ± 0.067  ops/ms
+[info] ShowOutputs.showGenericProgrammingSemi  thrpt   10  5.953 ± 0.057  ops/ms
+[info] ShowOutputs.showMagnoliaAuto            thrpt   10  6.702 ± 0.106  ops/ms
+[info] ShowOutputs.showMagnoliaSemi            thrpt   10  6.605 ± 0.289  ops/ms
+[info] ShowOutputs.showSanely                  thrpt   10  8.201 ± 0.078  ops/ms
 ```
 
 Scala 3 runtime performance:
 ```
 [info] Benchmark                                Mode  Cnt  Score   Error   Units
-[info] ShowOutputs.showGenericProgrammingAuto  thrpt   10  0.159 ± 0.023  ops/ms
-[info] ShowOutputs.showGenericProgrammingSemi  thrpt   10  3.475 ± 0.051  ops/ms
-[info] ShowOutputs.showMagnoliaAuto            thrpt   10  0.089 ± 0.023  ops/ms
-[info] ShowOutputs.showMagnoliaSemi            thrpt   10  4.096 ± 0.036  ops/ms
-[info] ShowOutputs.showSanely                  thrpt   10  4.800 ± 0.042  ops/ms
+[info] ShowOutputs.showGenericProgrammingAuto  thrpt   10  3.687 ± 1.588  ops/ms
+[info] ShowOutputs.showGenericProgrammingSemi  thrpt   10  6.291 ± 0.062  ops/ms
+[info] ShowOutputs.showMagnoliaAuto            thrpt   10  0.265 ± 0.194  ops/ms
+[info] ShowOutputs.showMagnoliaSemi            thrpt   10  8.316 ± 0.067  ops/ms
+[info] ShowOutputs.showSanely                  thrpt   10  9.191 ± 0.081  ops/ms
 ```
