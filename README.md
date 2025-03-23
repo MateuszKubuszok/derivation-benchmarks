@@ -75,6 +75,11 @@ Projects:
 >  - I turned that branch into a [GitHub template](https://github.com/scalalandio/chimney-macro-commons-template)
 >    if you wanted to experiment with cross-compilable macros ;)
 
+> Scala 3.7.0 changed the way implicits works, this breaks the flow of our sanely-automatic pattern,
+> but in turn we have access to [`Expr.summonIgnoring`](https://github.com/scala/scala3/discussions/21909).
+> This was implemented on [`summon-ignoring-3.7`](https://github.com/MateuszKubuszok/derivation-benchmarks/tree/cache)
+> in `showMacros373`.
+
 Compilation time of the module (with only 1 needed implicit)
 ```
                             Scala 2   Scala 3  Units
