@@ -1,8 +1,8 @@
 import commandmatrix.extra.*
 
 val versions = new {
-  val scala2 = "2.13.14"
-  val scala3 = "3.3.3"
+  val scala2 = "2.13.16"
+  val scala3 = "3.3.5"
 
   // Which versions should be cross-compiled for publishing
   val scalas = List(scala2, scala3)
@@ -71,6 +71,7 @@ lazy val root = project
   .aggregate(jsoniterScalaWrapper.projectRefs *)
   .aggregate(jsoniterScalaSanely.projectRefs *)
   .aggregate(jsoniterScalaSemi.projectRefs *)
+  .aggregate(ziojsonGenericSemi.projectRefs *)
 
 // classes for which we will derive things
 
@@ -261,6 +262,16 @@ lazy val jsoniterScalaSemi = projectMatrix
   )
   .dependsOn(testClasses)
 
+
+lazy val ziojsonGenericSemi = projectMatrix
+  .in(file("ziojson-generic-semi"))
+  .someVariations(versions.scalas, versions.platforms)(only1VersionInIDE *)
+  .settings(commonSettings *)
+  .settings(
+    libraryDependencies += "dev.zio" %% "zio-json" % "0.7.39"
+  )
+  .dependsOn(testClasses)
+
 lazy val benchmarks = projectMatrix
   .in(file("benchmarks"))
   .someVariations(versions.scalas, versions.platforms)(
@@ -278,6 +289,7 @@ lazy val benchmarks = projectMatrix
     circeGenericSemi,
     circeMagnoliaAuto,
     circeMagnoliaSemi,
-    jsoniterScalaSemi
+    jsoniterScalaSemi,
+    ziojsonGenericSemi
   )
   .enablePlugins(JmhPlugin)
