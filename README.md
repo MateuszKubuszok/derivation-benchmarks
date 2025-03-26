@@ -1,6 +1,8 @@
 # Derivation benchmarks
 
-Take a look at [_Slow Auto, Inconvenient Semi_ presentation](https://github.com/MateuszKubuszok/SlowAutoInconvenientSemi).
+Take a look at [_Slow Auto, Inconvenient Semi_ presentation (updated)](https://github.com/MateuszKubuszok/SlowAutoInconvenientSemiUpdated).
+
+The previous version of [_Slow Auto, Inconvenient Semi_ presentation](https://github.com/MateuszKubuszok/SlowAutoInconvenientSemi) is almost identical, but without the update about `Expr.summonIgnoring` and results for newer Scalas.
 
 ## JSON round trip
 
