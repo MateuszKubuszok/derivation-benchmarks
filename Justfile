@@ -17,6 +17,8 @@ coldJvmCompileJSONs:
   sbt --no-server jsoniterScalaSanely3/clean "show jsoniterScalaSanely3/name" jsoniterScalaSanely3/compile
   sbt --no-server jsoniterScalaSemi/clean    "show jsoniterScalaSemi/name"    jsoniterScalaSemi/compile
   sbt --no-server jsoniterScalaSemi3/clean   "show jsoniterScalaSemi3/name"   jsoniterScalaSemi3/compile
+  sbt --no-server ziojsonGenericSemi/clean   "show ziojsonGenericSemi/name"   ziojsonGenericSemi/compile
+  sbt --no-server ziojsonGenericSemi3/clean  "show ziojsonGenericSemi3/name"  ziojsonGenericSemi3/compile
 
 [doc('Compile each measured JSON project with how JVM (like with development)')]
 hotJvmCompileJSONs:
@@ -45,6 +47,8 @@ hotJvmCompileJSONs:
     jsoniterScalaSanely3/clean "show jsoniterScalaSanely3/name" jsoniterScalaSanely3/compile \
     jsoniterScalaSemi/clean    "show jsoniterScalaSemi/name"    jsoniterScalaSemi/compile \
     jsoniterScalaSemi3/clean   "show jsoniterScalaSemi3/name"   jsoniterScalaSemi3/compile \
+    ziojsonGenericSemi/clean   "show ziojsonGenericSemi/name"   ziojsonGenericSemi/compile \
+    ziojsonGenericSemi3/clean  "show ziojsonGenericSemi3/name"  ziojsonGenericSemi3/compile \
     projects
 
 [doc('Benchmark runtime')]

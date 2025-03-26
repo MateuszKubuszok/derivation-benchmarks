@@ -44,4 +44,7 @@ class JsonRoundTrips extends JsonRoundTripPlatform {
 
   @Benchmark
   def jsoniterScalaSemi: Any = JsoniterScalaSemi.roundTrip(out)
+
+  @Benchmark
+  def ziojsonScalaSemi: Any = ZiojsonGenericSemi.roundTrip(out)
 }
